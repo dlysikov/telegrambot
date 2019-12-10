@@ -1,6 +1,7 @@
 package com.telegram.bot.controller;
 
 import com.telegram.bot.model.types.UserMode;
+import com.telegram.bot.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -238,15 +239,10 @@ public class ExchangeBot extends TelegramLongPollingBot {
             try {
                 String money = new String(new byte[]{(byte) 0xF0, (byte) 0x9F, (byte) 0x92, (byte) 0xB6}, "UTF-8");
                 KeyboardRow keyboardButtonsCurrency = new KeyboardRow();
-                keyboardButtonsCurrency.add(money + "btc");
-                keyboardButtonsCurrency.add(money + "eth");
-                keyboardButtonsCurrency.add(money + "ltc");
-                keyboardButtonsCurrency.add(money + "doge");
-                keyboardButtonsCurrency.add(money + "bch");
-                keyboardButtonsCurrency.add(money + "xrp");
+                CommonUtils.currencyList.forEach(currency -> keyboardButtonsCurrency.add(money + currency));
                 keyboardRows.add(keyboardButtonsCurrency);
             } catch (Exception e) {
-                // NOP
+                log.error("Have exception -> ", e);
             }
         }
         keyboardRows.add(keyboardButtons);
