@@ -26,7 +26,7 @@ public class BotController {
     private RestTemplate restTemplate;
 
     @Autowired
-    private Bot bot;
+    private ExchangeBot bot;
 
     @GetMapping(value = {"/", ""})
     public String start() {

@@ -1,6 +1,8 @@
 package com.telegram.bot.controller;
 
 import com.telegram.bot.model.types.UserMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -17,12 +19,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import java.awt.*;
 import java.util.*;
 import java.util.List;
 
 @Component
-public class Bot extends TelegramLongPollingBot {
+public class ExchangeBot extends TelegramLongPollingBot {
+
+    private static Logger log = LoggerFactory.getLogger(ExchangeBot.class);
 
     @Value("${botUserName}")
     private String botUserName;
