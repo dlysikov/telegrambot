@@ -88,4 +88,19 @@ public class UserWorkflow {
     public void setStep(Step step) {
         this.step = step;
     }
+
+    @Override
+    public String toString() {
+        return "UserWorkflow{" +
+                "chatId='" + chatId + '\'' +
+                ", originalTimestamp=" + originalTimestamp +
+                ", step=" + step +
+                ", stakeUserName='" + stakeUserName + '\'' +
+                ", pdUserName='" + pdUserName + '\'' +
+                ", amount=" + amount +
+                ", currency=" + currency +
+                ", from='" + from + '\'' +
+                ", to='" + to + '\'' +
+                '}';
+    }
 }

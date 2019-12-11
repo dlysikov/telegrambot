@@ -85,7 +85,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
                         }
                         default: {
                             String chatId = String.valueOf(update.getMessage().getChatId());
-                            if (userModeMap.get(chatId) != null) {
+                            stakeUserHandler(update);
+                            /*if (userModeMap.get(chatId) != null) {
                                 if (userModeMap.get(chatId).get(MODE).equals(UserMode.YES.name())) {
                                     String countQuestion = userModeMap.get(chatId).get(QUESTION);
                                     switch (countQuestion) {
@@ -148,7 +149,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
                                         }
                                     }
                                 }
-                            }
+                            }*/
                             break;
                         }
                     }
@@ -187,7 +188,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (userWorkflow != null && CURRENCY.equals(userWorkflow.getStep())) {
             String message = update.getMessage().getText();
-            Currency currency = Currency.valueOf(message.substring(2));
+            Currency currency = Currency.valueOf(message.substring(2).toUpperCase());
             userWorkflow.setCurrency(currency);
             userWorkflow.setStep(AMOUNT);
             execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
@@ -204,18 +205,18 @@ public class ExchangeBot extends TelegramLongPollingBot {
             userWorkflow.setStep(PD_USER);
             execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
         } else {
-            currencyChoiceHandler(update);
+            pdUserHandler(update);
         }
     }
 
-    private void directionHandler(Update update) throws Exception {
+    private void pdUserHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (userWorkflow != null && PD_USER.equals(userWorkflow.getStep())) {
             String message = update.getMessage().getText();
-            userWorkflow.setAmount(Long.valueOf(message));
+            userWorkflow.setPdUserName(message);
             userWorkflow.setStep(DIRECTION);
         } else {
-            currencyChoiceHandler(update);
+            log.warn("There is no handler for that case");
         }
     }
 
@@ -242,7 +243,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
         userWorkflow.setStep(STAKE_USER);
         workFlowMap.put(chatId, userWorkflow);
 
-        Map<String, String> paramsMap;
+       /* Map<String, String> paramsMap;
         if (userModeMap.get(chatId) != null) {
             paramsMap = userModeMap.get(chatId);
             paramsMap.put(MODE, UserMode.YES.name());
@@ -252,7 +253,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             paramsMap.put(MODE, UserMode.YES.name());
             paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
             userModeMap.put(chatId, paramsMap);
-        }
+        }*/
     }
 
     private void cancelProcessing(Update update) throws Exception {
@@ -260,13 +261,14 @@ public class ExchangeBot extends TelegramLongPollingBot {
         log.info("Cancel processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
 
-        if (userModeMap.get(chatId) != null && userModeMap.get(chatId).get(KEY) != null) {
+        workFlowMap.remove(chatId);
+      /*  if (userModeMap.get(chatId) != null && userModeMap.get(chatId).get(KEY) != null) {
             String key = userModeMap.get(chatId).get(KEY);
             if (!StringUtils.isEmpty(key)) {
                 userParamsMap.remove(key);
             }
             userModeMap.remove(chatId);
-        }
+        }*/
 //        userModeMap.remove(chatId);
     }
 
@@ -276,18 +278,18 @@ public class ExchangeBot extends TelegramLongPollingBot {
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
         System.out.println("Success!");
         // Obrezat currency
-        userParamsMap.forEach((key, value) -> {
+       /* userParamsMap.forEach((key, value) -> {
             System.out.println("Map for user: " + key);
             value.forEach((key1, value1) -> System.out.println(key1 + " -> " + value1));
         });
         System.out.println();
 
         userParamsMap.remove(userModeMap.get(chatId).get(KEY));
-        userModeMap.remove(chatId);
+        userModeMap.remove(chatId);*/
     }
 
     private String getHelloMsg(Update update) {
-        return new MessageFormat("Hello {0}, im Your CryptoExchangeBot. Press “Go to Exchange” to start").format(update.getMessage().getFrom().getFirstName());
+        return MessageFormat.format("Hello {0}! I'm Your CryptoExchangeBot. Press “Go to Exchange” to start", update.getMessage().getFrom().getFirstName());
     }
 
 
@@ -303,7 +305,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
     }
 
     public void printModeMap() {
-        if (!userModeMap.isEmpty()) {
+        /*if (!userModeMap.isEmpty()) {
             userModeMap.forEach((key, value) -> {
                 System.out.println("Chat Id: " + key);
                 value.forEach((key1, value1) -> System.out.println("    " + key1 + " -> " + value1));
@@ -311,6 +313,14 @@ public class ExchangeBot extends TelegramLongPollingBot {
         } else {
             System.out.println("Empty Mode Map!");
         }
+*/
+        if (!workFlowMap.isEmpty()) {
+            workFlowMap.forEach((key, value) ->  System.out.println("    " + key + " -> " + value));
+
+        } else {
+            System.out.println("Empty Mode Map!");
+        }
+
     }
 
     private SendMessage addReplyButtonsWithCurrency(Update update, String text, List<Actions> actionList) {
@@ -322,7 +332,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
     }
 
     private SendMessage addReplyButtons(Update update, String text, List<Actions> actionList, boolean isNeedCurrency) {
-        String chatId = String.valueOf(update.getMessage().getChatId());
+//        String chatId = String.valueOf(update.getMessage().getChatId());
+        String chatId = update.getMessage() != null ? String.valueOf(update.getMessage().getChatId()) : String.valueOf(update.getCallbackQuery().getMessage().getChatId());
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
         KeyboardRow keyboardButtons = new KeyboardRow();
         actionList.forEach(action -> keyboardButtons.add(action.getName()));
