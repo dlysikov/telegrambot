@@ -1,7 +1,9 @@
 package com.telegram.bot.controller;
 
+import com.telegram.bot.model.enums.Actions;
+import com.telegram.bot.model.enums.Currency;
+import com.telegram.bot.model.enums.Symbols;
 import com.telegram.bot.model.types.UserMode;
-import com.telegram.bot.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +23,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.util.*;
-import java.util.List;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
 public class ExchangeBot extends TelegramLongPollingBot {
@@ -37,7 +40,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
     @Autowired
     private RestTemplate restTemplate;
 
-    private Map<String, LinkedHashMap<String, String>> userParamsMap = new HashMap<>(); 
+
+    private Map<String, LinkedHashMap<String, String>> userParamsMap = new HashMap<>();
     private Map<String, Map<String, String>> userModeMap = new HashMap<>();
 
     private final String MODE = "isExchangeMode";
@@ -60,8 +64,122 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
                     String text = "Hello " + update.getMessage().getFrom().getFirstName() + ", im YourCryptoExchangeBot. Press “Go to Exchange” to start";
 
+                    if (message.equals("/start")) {
+                        System.out.println("Start to " + update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
+                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
 
-                    switch (message) {
+                        if (!userModeMap.containsKey(chatId)) {
+                            Map<String, String> paramsMap = new HashMap<>();
+                            paramsMap.put(MODE, UserMode.NO.name());
+                            paramsMap.put(QUESTION, UserMode.NO.name());
+                            userModeMap.put(chatId, paramsMap);
+                        }
+                    } else if (message.equals(Actions.GoExchange.getName())) {
+                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter your stake username:", Arrays.asList(cancel), false));
+                        Map<String, String> paramsMap;
+                        if (userModeMap.get(chatId) != null) {
+                            paramsMap = userModeMap.get(chatId);
+                            paramsMap.put(MODE, UserMode.YES.name());
+                            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
+                        } else {
+                            paramsMap = new HashMap<>();
+                            paramsMap.put(MODE, UserMode.YES.name());
+                            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
+                            userModeMap.put(chatId, paramsMap);
+                        }
+                    } else if (message.equals("❌Cancel")) {
+                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
+
+                        if (userModeMap.get(chatId) != null) {
+                            if (userModeMap.get(chatId).get(KEY) != null) {
+                                String key = userModeMap.get(chatId).get(KEY);
+                                if (key != null && !key.equals("")) {
+                                    userParamsMap.remove(key);
+                                }
+                                userModeMap.remove(chatId);
+                            }
+                            userModeMap.remove(chatId);
+                        }
+                    } else if (message.equals("✅Done")) {
+                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
+                        System.out.println("Success!");
+                        // Obrezat currency
+                        userParamsMap.entrySet().stream().forEach(e -> {
+                            System.out.println("Map for user: " + e.getKey());
+                            e.getValue().entrySet().forEach(elem -> System.out.println(elem.getKey() + " -> " + elem.getValue()));
+                        });
+                        System.out.println();
+
+                        userParamsMap.remove(userModeMap.get(chatId).get(KEY));
+                        userModeMap.remove(chatId);
+                    } else {
+                        if (userModeMap.get(chatId) != null) {
+                            if (userModeMap.get(chatId).get(MODE) == UserMode.YES.name()) {
+                                String countQuestion = userModeMap.get(chatId).get(QUESTION);
+                                switch (countQuestion) {
+                                    case "FIRST_QUESTION": {
+                                        String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOTMzNmI1ZC02ZWMzLTQ1YWItYjBhNC0yNzE1NjRhZDk3NzgiLCJpYXQiOjE1NzQwODY5MzMsImV4cCI6MTU3OTI3MDkzM30.-0N0pHnDIeFGYHKHJB45gFoAk9FAlcpsH7jwtIzEZsg", "https://api.stake.com/graphql");
+
+                                        if (!response.contains("null")) {
+                                            execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), true));
+                                            Map<String, String> bufMap = userModeMap.get(chatId);
+                                            bufMap.put(KEY, chatId + message);
+
+                                            LinkedHashMap<String, String> map = new LinkedHashMap<>();
+                                            map.put("stake user", message);
+                                            userParamsMap.put(chatId + message, map);
+
+                                            execute(addReplyButtons(update.getMessage().getChatId(), "Select currency from list", Arrays.asList(cancel), true));
+                                            Map<String, String> paramsMap = userModeMap.get(chatId);
+                                            paramsMap.put(QUESTION, UserMode.SECOND_QUESTION.name());
+                                        } else {
+                                            execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
+                                        }
+                                        break;
+                                    }
+                                    case "SECOND_QUESTION": {
+                                        userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("currency", message.substring(2));
+
+                                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter amount:", Arrays.asList(cancel), false));
+                                        Map<String, String> paramsMap = userModeMap.get(chatId);
+                                        paramsMap.put(QUESTION, UserMode.THIRD_QUESTION.name());
+                                        break;
+                                    }
+                                    case "THIRD_QUESTION": {
+                                        userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("amount", message);
+
+                                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter PD username:", Arrays.asList(cancel), false));
+                                        Map<String, String> paramsMap = userModeMap.get(chatId);
+                                        paramsMap.put(QUESTION, UserMode.FOUR_QUESTION.name());
+                                        break;
+                                    }
+                                    case "FOUR_QUESTION": {
+                                        String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4ZjhkYmFlMi02MTYzLTRkOGEtOGY0MC1iZjBhZGZiODYxNDAiLCJpYXQiOjE1NzQ0MTQ4MDcsImV4cCI6MTU3OTU5ODgwN30.pkgPJAGeeLcY1Jbf3r-jRI-USAi10ewLWv-_wp2ZjOg", "https://api.primedice.com/graphql");
+
+                                        if (!response.contains("null")) {
+                                            execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), false));
+                                            userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("PD user", message);
+
+                                            InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Snake -> PD");
+                                            buttonSnake.setCallbackData("snake");
+                                            InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Snake");
+                                            buttonPD.setCallbackData("PD");
+                                            List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
+                                            execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
+                                        } else {
+                                            execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
+                                        }
+                                        break;
+                                    }
+                                    default: {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    /*switch (message) {
                         case "/start": {
                             System.out.println("Start to " + update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
                             execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
@@ -187,7 +305,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             }
                             break;
                         }
-                    }
+                    }*/
                 }
             } else if (update.hasCallbackQuery()) {
                 userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY)).put("from", update.getCallbackQuery().getData());
@@ -236,14 +354,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
         listButtonNames.forEach(buttonName -> keyboardButtons.add(buttonName));
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         if (isNeedCurrency) {
-            try {
-                String money = new String(new byte[]{(byte) 0xF0, (byte) 0x9F, (byte) 0x92, (byte) 0xB6}, "UTF-8");
-                KeyboardRow keyboardButtonsCurrency = new KeyboardRow();
-                CommonUtils.currencyList.forEach(currency -> keyboardButtonsCurrency.add(money + currency));
-                keyboardRows.add(keyboardButtonsCurrency);
-            } catch (Exception e) {
-                log.error("Have exception -> ", e);
-            }
+            KeyboardRow keyboardButtonsCurrency = new KeyboardRow();
+            Currency.getCurrencyList().forEach(currency -> keyboardButtonsCurrency.add(Symbols.MONEY + currency));
+            keyboardRows.add(keyboardButtonsCurrency);
         }
         keyboardRows.add(keyboardButtons);
         replyKeyboardMarkup.setSelective(true);
