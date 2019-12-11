@@ -3,11 +3,13 @@ package com.telegram.bot.controller;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
 import com.telegram.bot.model.enums.Symbols;
+import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.model.types.UserMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,10 +23,14 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.thymeleaf.util.StringUtils;
 
+import java.text.MessageFormat;
 import java.util.*;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static com.telegram.bot.model.enums.Actions.*;
+import static com.telegram.bot.model.enums.Step.*;
 
 @Component
 public class ExchangeBot extends TelegramLongPollingBot {
@@ -40,6 +46,11 @@ public class ExchangeBot extends TelegramLongPollingBot {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private Environment env;
+
+    private Map<String, UserWorkflow> workFlowMap = new HashMap<>();
+
 
     private Map<String, LinkedHashMap<String, String>> userParamsMap = new HashMap<>();
     private Map<String, Map<String, String>> userModeMap = new HashMap<>();
@@ -51,203 +62,38 @@ public class ExchangeBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         try {
-            String done = new String(new byte[]{(byte) 0xE2, (byte) 0x9C, (byte) 0x85}, "UTF-8") + "Done";
-            String cancel = new String(new byte[]{(byte) 0xE2, (byte) 0x9D, (byte) 0x8C}, "UTF-8") + "Cancel";
-            String goExchange = new String(new byte[]{(byte) 0xF0, (byte) 0x9F, (byte) 0x9A, (byte) 0xBE}, "UTF-8") + "Go Exchange";
-            String changeLanguage = new String(new byte[]{(byte) 0xF0, (byte) 0x9F, (byte) 0x87, (byte) 0xAC, (byte) 0xF0, (byte) 0x9F, (byte) 0x87, (byte) 0xA7}, "UTF-8") + "Change language";
-            String howToUse = new String(new byte[]{(byte) 0xF0, (byte) 0x9F, (byte) 0x91, (byte) 0x8A}, "UTF-8") + "How to Use bot";
-
             if (update.hasMessage()) {
                 if (update.getMessage().hasText()) {
                     String message = update.getMessage().getText();
-                    String chatId = String.valueOf(update.getMessage().getChatId());
 
-                    String text = "Hello " + update.getMessage().getFrom().getFirstName() + ", im YourCryptoExchangeBot. Press “Go to Exchange” to start";
-
-                    if (message.equals("/start")) {
-                        System.out.println("Start to " + update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
-                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-
-                        if (!userModeMap.containsKey(chatId)) {
-                            Map<String, String> paramsMap = new HashMap<>();
-                            paramsMap.put(MODE, UserMode.NO.name());
-                            paramsMap.put(QUESTION, UserMode.NO.name());
-                            userModeMap.put(chatId, paramsMap);
-                        }
-                    } else if (message.equals(Actions.GoExchange.getName())) {
-                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter your stake username:", Arrays.asList(cancel), false));
-                        Map<String, String> paramsMap;
-                        if (userModeMap.get(chatId) != null) {
-                            paramsMap = userModeMap.get(chatId);
-                            paramsMap.put(MODE, UserMode.YES.name());
-                            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
-                        } else {
-                            paramsMap = new HashMap<>();
-                            paramsMap.put(MODE, UserMode.YES.name());
-                            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
-                            userModeMap.put(chatId, paramsMap);
-                        }
-                    } else if (message.equals("❌Cancel")) {
-                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-
-                        if (userModeMap.get(chatId) != null) {
-                            if (userModeMap.get(chatId).get(KEY) != null) {
-                                String key = userModeMap.get(chatId).get(KEY);
-                                if (key != null && !key.equals("")) {
-                                    userParamsMap.remove(key);
-                                }
-                                userModeMap.remove(chatId);
-                            }
-                            userModeMap.remove(chatId);
-                        }
-                    } else if (message.equals("✅Done")) {
-                        execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-                        System.out.println("Success!");
-                        // Obrezat currency
-                        userParamsMap.entrySet().stream().forEach(e -> {
-                            System.out.println("Map for user: " + e.getKey());
-                            e.getValue().entrySet().forEach(elem -> System.out.println(elem.getKey() + " -> " + elem.getValue()));
-                        });
-                        System.out.println();
-
-                        userParamsMap.remove(userModeMap.get(chatId).get(KEY));
-                        userModeMap.remove(chatId);
-                    } else {
-                        if (userModeMap.get(chatId) != null) {
-                            if (userModeMap.get(chatId).get(MODE) == UserMode.YES.name()) {
-                                String countQuestion = userModeMap.get(chatId).get(QUESTION);
-                                switch (countQuestion) {
-                                    case "FIRST_QUESTION": {
-                                        String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOTMzNmI1ZC02ZWMzLTQ1YWItYjBhNC0yNzE1NjRhZDk3NzgiLCJpYXQiOjE1NzQwODY5MzMsImV4cCI6MTU3OTI3MDkzM30.-0N0pHnDIeFGYHKHJB45gFoAk9FAlcpsH7jwtIzEZsg", "https://api.stake.com/graphql");
-
-                                        if (!response.contains("null")) {
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), true));
-                                            Map<String, String> bufMap = userModeMap.get(chatId);
-                                            bufMap.put(KEY, chatId + message);
-
-                                            LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                                            map.put("stake user", message);
-                                            userParamsMap.put(chatId + message, map);
-
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "Select currency from list", Arrays.asList(cancel), true));
-                                            Map<String, String> paramsMap = userModeMap.get(chatId);
-                                            paramsMap.put(QUESTION, UserMode.SECOND_QUESTION.name());
-                                        } else {
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
-                                        }
-                                        break;
-                                    }
-                                    case "SECOND_QUESTION": {
-                                        userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("currency", message.substring(2));
-
-                                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter amount:", Arrays.asList(cancel), false));
-                                        Map<String, String> paramsMap = userModeMap.get(chatId);
-                                        paramsMap.put(QUESTION, UserMode.THIRD_QUESTION.name());
-                                        break;
-                                    }
-                                    case "THIRD_QUESTION": {
-                                        userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("amount", message);
-
-                                        execute(addReplyButtons(update.getMessage().getChatId(), "Enter PD username:", Arrays.asList(cancel), false));
-                                        Map<String, String> paramsMap = userModeMap.get(chatId);
-                                        paramsMap.put(QUESTION, UserMode.FOUR_QUESTION.name());
-                                        break;
-                                    }
-                                    case "FOUR_QUESTION": {
-                                        String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4ZjhkYmFlMi02MTYzLTRkOGEtOGY0MC1iZjBhZGZiODYxNDAiLCJpYXQiOjE1NzQ0MTQ4MDcsImV4cCI6MTU3OTU5ODgwN30.pkgPJAGeeLcY1Jbf3r-jRI-USAi10ewLWv-_wp2ZjOg", "https://api.primedice.com/graphql");
-
-                                        if (!response.contains("null")) {
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), false));
-                                            userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("PD user", message);
-
-                                            InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Snake -> PD");
-                                            buttonSnake.setCallbackData("snake");
-                                            InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Snake");
-                                            buttonPD.setCallbackData("PD");
-                                            List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
-                                            execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
-                                        } else {
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
-                                        }
-                                        break;
-                                    }
-                                    default: {
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    /*switch (message) {
+                    switch (message) {
                         case "/start": {
-                            System.out.println("Start to " + update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
-                            execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-
-                            if (!userModeMap.containsKey(chatId)) {
-                                Map<String, String> paramsMap = new HashMap<>();
-                                paramsMap.put(MODE, UserMode.NO.name());
-                                paramsMap.put(QUESTION, UserMode.NO.name());
-                                userModeMap.put(chatId, paramsMap);
-                            }
-
+                            startProcessing(update);
                             break;
                         }
                         case "\uD83D\uDEBEGo Exchange": {
-                            execute(addReplyButtons(update.getMessage().getChatId(), "Enter your stake username:", Arrays.asList(cancel), false));
-                            Map<String, String> paramsMap;
-                            if (userModeMap.get(chatId) != null) {
-                                paramsMap = userModeMap.get(chatId);
-                                paramsMap.put(MODE, UserMode.YES.name());
-                                paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
-                            } else {
-                                paramsMap = new HashMap<>();
-                                paramsMap.put(MODE, UserMode.YES.name());
-                                paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
-                                userModeMap.put(chatId, paramsMap);
-                            }
+                            goToExchangeProcessing(update);
                             break;
                         }
                         case "❌Cancel": {
-                            execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-
-                            if (userModeMap.get(chatId) != null) {
-                                if (userModeMap.get(chatId).get(KEY) != null) {
-                                    String key = userModeMap.get(chatId).get(KEY);
-                                    if (key != null && !key.equals("")) {
-                                        userParamsMap.remove(key);
-                                    }
-                                    userModeMap.remove(chatId);
-                                }
-                                userModeMap.remove(chatId);
-                            }
+                            cancelProcessing(update);
                             break;
                         }
                         case "✅Done": {
-                            execute(addReplyButtons(update.getMessage().getChatId(), text, Arrays.asList(goExchange, changeLanguage, howToUse), false));
-                            System.out.println("Success!");
-                            // Obrezat currency
-                            userParamsMap.entrySet().stream().forEach(e -> {
-                                System.out.println("Map for user: " + e.getKey());
-                                e.getValue().entrySet().forEach(elem -> System.out.println(elem.getKey() + " -> " + elem.getValue()));
-                            });
-                            System.out.println();
-
-                            userParamsMap.remove(userModeMap.get(chatId).get(KEY));
-                            userModeMap.remove(chatId);
-
+                            doneProcessing(update);
                             break;
                         }
                         default: {
+                            String chatId = String.valueOf(update.getMessage().getChatId());
                             if (userModeMap.get(chatId) != null) {
-                                if (userModeMap.get(chatId).get(MODE) == UserMode.YES.name()) {
+                                if (userModeMap.get(chatId).get(MODE).equals(UserMode.YES.name())) {
                                     String countQuestion = userModeMap.get(chatId).get(QUESTION);
                                     switch (countQuestion) {
                                         case "FIRST_QUESTION": {
-                                            String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOTMzNmI1ZC02ZWMzLTQ1YWItYjBhNC0yNzE1NjRhZDk3NzgiLCJpYXQiOjE1NzQwODY5MzMsImV4cCI6MTU3OTI3MDkzM30.-0N0pHnDIeFGYHKHJB45gFoAk9FAlcpsH7jwtIzEZsg", "https://api.stake.com/graphql");
+//                                            String response = userExists(message, env.getProperty("stake.token"), env.getProperty("stake.url"));
 
-                                            if (!response.contains("null")) {
-                                                execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), true));
+                                            if (userExists(message, env.getProperty("stake.token"), env.getProperty("stake.url"))) {
+                                                execute(addReplyButtonsWithCurrency(update, "User exist!", Collections.singletonList(Cancel)));
                                                 Map<String, String> bufMap = userModeMap.get(chatId);
                                                 bufMap.put(KEY, chatId + message);
 
@@ -255,18 +101,18 @@ public class ExchangeBot extends TelegramLongPollingBot {
                                                 map.put("stake user", message);
                                                 userParamsMap.put(chatId + message, map);
 
-                                                execute(addReplyButtons(update.getMessage().getChatId(), "Select currency from list", Arrays.asList(cancel), true));
+                                                execute(addReplyButtonsWithCurrency(update, "Select currency from list", Collections.singletonList(Cancel)));
                                                 Map<String, String> paramsMap = userModeMap.get(chatId);
                                                 paramsMap.put(QUESTION, UserMode.SECOND_QUESTION.name());
                                             } else {
-                                                execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
+                                                execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
                                             }
                                             break;
                                         }
                                         case "SECOND_QUESTION": {
                                             userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("currency", message.substring(2));
 
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "Enter amount:", Arrays.asList(cancel), false));
+                                            execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
                                             Map<String, String> paramsMap = userModeMap.get(chatId);
                                             paramsMap.put(QUESTION, UserMode.THIRD_QUESTION.name());
                                             break;
@@ -274,26 +120,26 @@ public class ExchangeBot extends TelegramLongPollingBot {
                                         case "THIRD_QUESTION": {
                                             userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("amount", message);
 
-                                            execute(addReplyButtons(update.getMessage().getChatId(), "Enter PD username:", Arrays.asList(cancel), false));
+                                            execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
                                             Map<String, String> paramsMap = userModeMap.get(chatId);
                                             paramsMap.put(QUESTION, UserMode.FOUR_QUESTION.name());
                                             break;
                                         }
                                         case "FOUR_QUESTION": {
-                                            String response = checkUser(message, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4ZjhkYmFlMi02MTYzLTRkOGEtOGY0MC1iZjBhZGZiODYxNDAiLCJpYXQiOjE1NzQ0MTQ4MDcsImV4cCI6MTU3OTU5ODgwN30.pkgPJAGeeLcY1Jbf3r-jRI-USAi10ewLWv-_wp2ZjOg", "https://api.primedice.com/graphql");
+//                                            String response = userExists(message, env.getProperty("primedice.token"), env.getProperty("primedice.url"));
 
-                                            if (!response.contains("null")) {
-                                                execute(addReplyButtons(update.getMessage().getChatId(), "User exist!", Arrays.asList(cancel), false));
+                                            if (userExists(message, env.getProperty("primedice.token"), env.getProperty("primedice.url"))) {
+                                                execute(addReplyButtons(update, "User exist!", Collections.singletonList(Cancel)));
                                                 userParamsMap.get(userModeMap.get(chatId).get(KEY)).put("PD user", message);
 
-                                                InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Snake -> PD");
-                                                buttonSnake.setCallbackData("snake");
+                                                InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
+                                                buttonSnake.setCallbackData("Stake");
                                                 InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Snake");
                                                 buttonPD.setCallbackData("PD");
                                                 List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
                                                 execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
                                             } else {
-                                                execute(addReplyButtons(update.getMessage().getChatId(), "User not found. Enter correct user:", Arrays.asList(cancel), false));
+                                                execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
                                             }
                                             break;
                                         }
@@ -305,32 +151,151 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             }
                             break;
                         }
-                    }*/
+                    }
                 }
             } else if (update.hasCallbackQuery()) {
                 userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY)).put("from", update.getCallbackQuery().getData());
-                execute(addReplyButtons(update.getCallbackQuery().getMessage().getChatId(), "Answers is over. Lock at your results and click \"Done\" button!\n" + makeResultString(userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY))), Arrays.asList(done, cancel), false));
+                execute(addReplyButtons(update, "Answers are over. Lock at your results and click \"Done\" button!\n" + makeResultString(userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY))), Arrays.asList(Done, Cancel)));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    public String getBotUsername() {
-        return botUserName;
+    private UserWorkflow getUserWorkflow(Update update) {
+        String chatId = String.valueOf(update.getMessage().getChatId());
+        return  workFlowMap.get(chatId);
     }
 
-    @Override
-    public String getBotToken() {
-        return token;
+    private void stakeUserHandler(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null && STAKE_USER.equals(userWorkflow.getStep())) {
+            String message = update.getMessage().getText();
+            if (userExists(message, env.getProperty("stake.token"), env.getProperty("stake.url"))) {
+                userWorkflow.setStakeUserName(message);
+                userWorkflow.setStep(CURRENCY);
+                execute(addReplyButtonsWithCurrency(update, "Select currency from list", Collections.singletonList(Cancel)));
+            } else {
+                execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
+            }
+        } else {
+            currencyChoiceHandler(update);
+        }
     }
+
+    private void currencyChoiceHandler(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null && CURRENCY.equals(userWorkflow.getStep())) {
+            String message = update.getMessage().getText();
+            Currency currency = Currency.valueOf(message.substring(2));
+            userWorkflow.setCurrency(currency);
+            userWorkflow.setStep(AMOUNT);
+            execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
+        } else {
+            amountChoiceHandler(update);
+        }
+    }
+
+    private void amountChoiceHandler(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null && AMOUNT.equals(userWorkflow.getStep())) {
+            String message = update.getMessage().getText();
+            userWorkflow.setAmount(Long.valueOf(message));
+            userWorkflow.setStep(PD_USER);
+            execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
+        } else {
+            currencyChoiceHandler(update);
+        }
+    }
+
+    private void directionHandler(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null && PD_USER.equals(userWorkflow.getStep())) {
+            String message = update.getMessage().getText();
+            userWorkflow.setAmount(Long.valueOf(message));
+            userWorkflow.setStep(DIRECTION);
+        } else {
+            currencyChoiceHandler(update);
+        }
+    }
+
+    private void startProcessing(Update update) throws Exception {
+        String chatId = String.valueOf(update.getMessage().getChatId());
+        log.info("Start processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+
+        if (!userModeMap.containsKey(chatId)) {
+            Map<String, String> paramsMap = new HashMap<>();
+            paramsMap.put(MODE, UserMode.NO.name());
+            paramsMap.put(QUESTION, UserMode.NO.name());
+            userModeMap.put(chatId, paramsMap);
+        }
+
+    }
+
+    private void goToExchangeProcessing(Update update) throws Exception {
+        String chatId = String.valueOf(update.getMessage().getChatId());
+        log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+        UserWorkflow userWorkflow = new UserWorkflow();
+        userWorkflow.setChatId(chatId);
+        userWorkflow.setStep(STAKE_USER);
+        workFlowMap.put(chatId, userWorkflow);
+
+        Map<String, String> paramsMap;
+        if (userModeMap.get(chatId) != null) {
+            paramsMap = userModeMap.get(chatId);
+            paramsMap.put(MODE, UserMode.YES.name());
+            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
+        } else {
+            paramsMap = new HashMap<>();
+            paramsMap.put(MODE, UserMode.YES.name());
+            paramsMap.put(QUESTION, UserMode.FIRST_QUESTION.name());
+            userModeMap.put(chatId, paramsMap);
+        }
+    }
+
+    private void cancelProcessing(Update update) throws Exception {
+        String chatId = String.valueOf(update.getMessage().getChatId());
+        log.info("Cancel processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+
+        if (userModeMap.get(chatId) != null && userModeMap.get(chatId).get(KEY) != null) {
+            String key = userModeMap.get(chatId).get(KEY);
+            if (!StringUtils.isEmpty(key)) {
+                userParamsMap.remove(key);
+            }
+            userModeMap.remove(chatId);
+        }
+//        userModeMap.remove(chatId);
+    }
+
+    private void doneProcessing(Update update) throws Exception {
+        String chatId = String.valueOf(update.getMessage().getChatId());
+        log.info("Done processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+        System.out.println("Success!");
+        // Obrezat currency
+        userParamsMap.forEach((key, value) -> {
+            System.out.println("Map for user: " + key);
+            value.forEach((key1, value1) -> System.out.println(key1 + " -> " + value1));
+        });
+        System.out.println();
+
+        userParamsMap.remove(userModeMap.get(chatId).get(KEY));
+        userModeMap.remove(chatId);
+    }
+
+    private String getHelloMsg(Update update) {
+        return new MessageFormat("Hello {0}, im Your CryptoExchangeBot. Press “Go to Exchange” to start").format(update.getMessage().getFrom().getFirstName());
+    }
+
 
     public void printParamsMap() {
         if (!userParamsMap.isEmpty()) {
-            userParamsMap.entrySet().stream().forEach(elem -> {
-                System.out.println("User Key: " + elem.getKey());
-                elem.getValue().entrySet().forEach(e -> System.out.println("    " + e.getKey() + " -> " + e.getValue()));
+            userParamsMap.forEach((key, value) -> {
+                System.out.println("User Key: " + key);
+                value.forEach((key1, value1) -> System.out.println("    " + key1 + " -> " + value1));
             });
         } else {
             System.out.println("Empty Params Map!");
@@ -339,19 +304,28 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     public void printModeMap() {
         if (!userModeMap.isEmpty()) {
-            userModeMap.entrySet().stream().forEach(elem -> {
-                System.out.println("Chat Id: " + elem.getKey());
-                elem.getValue().entrySet().forEach(e -> System.out.println("    " + e.getKey() + " -> " + e.getValue()));
+            userModeMap.forEach((key, value) -> {
+                System.out.println("Chat Id: " + key);
+                value.forEach((key1, value1) -> System.out.println("    " + key1 + " -> " + value1));
             });
         } else {
             System.out.println("Empty Mode Map!");
         }
     }
 
-    private SendMessage addReplyButtons(long chatId, String text, List<String> listButtonNames, boolean isNeedCurrency) {
+    private SendMessage addReplyButtonsWithCurrency(Update update, String text, List<Actions> actionList) {
+        return addReplyButtons(update, text, actionList, true);
+    }
+
+    private SendMessage addReplyButtons(Update update, String text, List<Actions> actionList) {
+        return addReplyButtons(update, text, actionList, false);
+    }
+
+    private SendMessage addReplyButtons(Update update, String text, List<Actions> actionList, boolean isNeedCurrency) {
+        String chatId = String.valueOf(update.getMessage().getChatId());
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
         KeyboardRow keyboardButtons = new KeyboardRow();
-        listButtonNames.forEach(buttonName -> keyboardButtons.add(buttonName));
+        actionList.forEach(action -> keyboardButtons.add(action.getName()));
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         if (isNeedCurrency) {
             KeyboardRow keyboardButtonsCurrency = new KeyboardRow();
@@ -368,25 +342,39 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private String makeResultString(Map<String, String> paramValuesMap) {
         StringBuffer result = new StringBuffer();
-        paramValuesMap.entrySet().forEach(elem -> result.append(elem.getKey() + ": " + elem.getValue() + "\n"));
+        paramValuesMap.forEach((key, value) -> result.append(key).append(": ").append(value).append("\n"));
         return result.toString();
     }
 
     private SendMessage addInlineButtons(long chatId, String text, List<InlineKeyboardButton> list) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> l = new ArrayList<>();
-        l.add(list);
-        inlineKeyboardMarkup.setKeyboard(l);
+        List<List<InlineKeyboardButton>> listOfInlineButtons = new ArrayList<>();
+        listOfInlineButtons.add(list);
+        inlineKeyboardMarkup.setKeyboard(listOfInlineButtons);
         return new SendMessage().setChatId(chatId).setText(text).setReplyMarkup(inlineKeyboardMarkup);
     }
 
-    private String checkUser(String userName, String token, String url) {
+    private HttpHeaders getHeaders(String token) {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         httpHeaders.set("x-access-token", token);
+        return httpHeaders;
+    }
+
+    private boolean userExists(String userName, String token, String url) {
         String json = "{\"query\":\"{\\n  user  (name: \\\"" + userName + "\\\") \\n   {\\n    name\\n  }\\n   \\n}\"}";
-        HttpEntity<String> request = new HttpEntity<>(json, httpHeaders);
-        return restTemplate.postForObject(url, request, String.class);
+        HttpEntity<String> request = new HttpEntity<>(json, getHeaders(token));
+        return restTemplate.postForObject(url, request, String.class) != null;
+    }
+
+    @Override
+    public String getBotUsername() {
+        return botUserName;
+    }
+
+    @Override
+    public String getBotToken() {
+        return token;
     }
 
 }
