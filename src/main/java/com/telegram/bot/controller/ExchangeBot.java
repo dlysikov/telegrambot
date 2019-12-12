@@ -91,7 +91,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
                         }
                         default: {
                             handleRequest(update);
-                            responseGenerator(update);
                             /*if (userModeMap.get(chatId) != null) {
                                 if (userModeMap.get(chatId).get(MODE).equals(UserMode.YES.name())) {
                                     String countQuestion = userModeMap.get(chatId).get(QUESTION);
@@ -162,7 +161,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
                 }
             } else if (update.hasCallbackQuery()) {
                 handleRequest(update);
-                responseGenerator(update);
 //                userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY)).put("from", update.getCallbackQuery().getData());
 //                execute(addReplyButtons(update, "Answers are over. Lock at your results and click \"Done\" button!\n" + makeResultString(userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY))), Arrays.asList(Done, Cancel)));
             }
@@ -217,7 +215,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             newUserWorkflow.setStep(START);
             cacheService.add(getChatId(update), newUserWorkflow);
         }
-
+        responseGenerator(update);
     }
 
     private void responseGenerator(Update update) throws Exception {
@@ -310,21 +308,12 @@ public class ExchangeBot extends TelegramLongPollingBot {
         log.info("Start processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
         cacheService.removeByChatId(chatId);
-
-        if (!userModeMap.containsKey(chatId)) {
-            Map<String, String> paramsMap = new HashMap<>();
-            paramsMap.put(MODE, UserMode.NO.name());
-            paramsMap.put(QUESTION, UserMode.NO.name());
-            userModeMap.put(chatId, paramsMap);
-        }
-
     }
 
     private void goToExchangeProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
         log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
         handleRequest(update);
-        responseGenerator(update);
     }
 
     private void cancelProcessing(Update update) throws Exception {
