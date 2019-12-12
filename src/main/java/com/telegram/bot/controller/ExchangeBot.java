@@ -2,9 +2,11 @@ package com.telegram.bot.controller;
 
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
+import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.model.types.UserMode;
 import com.telegram.bot.service.CacheService;
+import com.telegram.bot.service.WorkFlowService;
 import com.telegram.bot.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +22,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.text.MessageFormat;
 import java.util.*;
@@ -50,6 +53,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     @Autowired
     private CacheService cacheService;
+
+    @Autowired
+    private WorkFlowService workFlowService;
 
 
     private Map<String, LinkedHashMap<String, String>> userParamsMap = new HashMap<>();
@@ -84,7 +90,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             break;
                         }
                         default: {
-                            stakeUserHandler(update);
+                            handleRequest(update);
+                            responseGenerator(update);
                             /*if (userModeMap.get(chatId) != null) {
                                 if (userModeMap.get(chatId).get(MODE).equals(UserMode.YES.name())) {
                                     String countQuestion = userModeMap.get(chatId).get(QUESTION);
@@ -154,89 +161,148 @@ public class ExchangeBot extends TelegramLongPollingBot {
                     }
                 }
             } else if (update.hasCallbackQuery()) {
-                userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY)).put("from", update.getCallbackQuery().getData());
-                execute(addReplyButtons(update, "Answers are over. Lock at your results and click \"Done\" button!\n" + makeResultString(userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY))), Arrays.asList(Done, Cancel)));
+                handleRequest(update);
+                responseGenerator(update);
+//                userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY)).put("from", update.getCallbackQuery().getData());
+//                execute(addReplyButtons(update, "Answers are over. Lock at your results and click \"Done\" button!\n" + makeResultString(userParamsMap.get(userModeMap.get(String.valueOf(update.getCallbackQuery().getMessage().getChatId())).get(KEY))), Arrays.asList(Done, Cancel)));
             }
         } catch (Exception e) {
             log.error("Something went wrong: ", e);
         }
     }
 
+    private void responseGenerator(UserWorkflow userWorkflow, Update update) {
+        Step nextStep = workFlowService.getNextStep(userWorkflow.getStep());
+
+    }
+
     private UserWorkflow getUserWorkflow(Update update) {
-        String chatId = String.valueOf(update.getMessage().getChatId());
-        return cacheService.getUserWorkflow(chatId);
+        return cacheService.getUserWorkflow(getChatId(update));
+    }
+
+    private String getChatId(Update update) {
+        return update.getMessage() != null ? String.valueOf(update.getMessage().getChatId()) : String.valueOf(update.getCallbackQuery().getMessage().getChatId());
+    }
+
+    private String getMessage(Update update) {
+        return update.hasMessage() ? update.getMessage().getText() : update.getCallbackQuery().getData();
+    }
+
+    private void handleRequest(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null) {
+            switch (userWorkflow.getStep()) {
+                case DIRECTION:
+                    directionHandler(update);
+                    break;
+                case STAKE_USER:
+                    stakeUserHandler(update);
+                    break;
+                case PD_USER:
+                    pdUserHandler(update);
+                    break;
+                case AMOUNT:
+                    amountChoiceHandler(update);
+                    break;
+                case CURRENCY:
+                    currencyChoiceHandler(update);
+                    break;
+                default:
+                    startProcessing(update);
+            }
+
+        } else {
+            UserWorkflow newUserWorkflow = new UserWorkflow();
+            newUserWorkflow.setChatId(getChatId(update));
+            newUserWorkflow.setStep(START);
+            cacheService.add(getChatId(update), newUserWorkflow);
+        }
+
+    }
+
+    private void responseGenerator(Update update) throws Exception {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (userWorkflow != null) {
+            Step nextStep = workFlowService.getNextStep(userWorkflow.getStep());
+            switch (nextStep) {
+                case DIRECTION:
+                    InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
+                    buttonSnake.setCallbackData(STAKE);
+                    InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Stake");
+                    buttonPD.setCallbackData(PD);
+                    List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
+                    execute(addInlineButtons(getChatId(update), "Make your choice:", list));
+                    userWorkflow.setStep(DIRECTION);
+                    break;
+                case STAKE_USER:
+                    execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+                    userWorkflow.setStep(STAKE_USER);
+                    break;
+                case PD_USER:
+                    execute(addReplyButtons(update, "Enter your PD username:", Collections.singletonList(Cancel)));
+                    userWorkflow.setStep(PD_USER);
+                    break;
+                case CURRENCY:
+                    execute(addReplyButtonsWithCurrency(update, Collections.singletonList(Cancel)));
+                    userWorkflow.setStep(CURRENCY);
+                    break;
+                case AMOUNT:
+                    execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
+                    userWorkflow.setStep(AMOUNT);
+                    break;
+            }
+        }
+
     }
 
     private void stakeUserHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (userWorkflow != null && STAKE_USER.equals(userWorkflow.getStep())) {
-            String message = update.getMessage().getText();
-            if (userExists(message, env.getProperty("stake.token"), env.getProperty("stake.url"))) {
-                userWorkflow.setStakeUserName(message);
-                userWorkflow.setStep(PD_USER);
-                execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
-            } else {
-                execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
-            }
+//        String message = update.getMessage().getText();
+        if (userExists(getMessage(update), env.getProperty("stake.token"), env.getProperty("stake.url"))) {
+            userWorkflow.setStakeUserName(getMessage(update));
+//            userWorkflow.setStep(PD_USER);
+//            execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
         } else {
-            currencyChoiceHandler(update);
+            execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
         }
     }
 
     private void currencyChoiceHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (userWorkflow != null && CURRENCY.equals(userWorkflow.getStep())) {
-            String message = update.getMessage().getText();
-            Currency currency = Currency.valueOf(message.substring(2).toUpperCase());
-            userWorkflow.setCurrency(currency);
-            userWorkflow.setStep(AMOUNT);
-            execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
-        } else {
-            amountChoiceHandler(update);
-        }
+//        String message = update.getMessage().getText();
+        Currency currency = Currency.valueOf(getMessage(update).substring(2).toUpperCase());
+        userWorkflow.setCurrency(currency);
+//        userWorkflow.setStep(AMOUNT);
+//        execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
     }
 
     private void amountChoiceHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (userWorkflow != null && AMOUNT.equals(userWorkflow.getStep())) {
-            String message = update.getMessage().getText();
-            userWorkflow.setAmount(Long.valueOf(message));
-            userWorkflow.setStep(HADLE_IS_DONE);
+//        String message = update.getMessage().getText();
+        userWorkflow.setAmount(Long.valueOf(getMessage(update)));
+//        userWorkflow.setStep(HADLE_IS_DONE);
 
-        } else {
-            pdUserHandler(update);
-        }
     }
 
     private void pdUserHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        String chatId = update.getMessage() != null ? String.valueOf(update.getMessage().getChatId()) : String.valueOf(update.getCallbackQuery().getMessage().getChatId());
-        if (userWorkflow != null && PD_USER.equals(userWorkflow.getStep())) {
-            String message = update.getMessage().getText();
-            userWorkflow.setPdUserName(message);
-            userWorkflow.setStep(CURRENCY);
-            execute(addReplyButtonsWithCurrency(update, Collections.singletonList(Cancel)));
+//        String message = update.getMessage().getText();
+        userWorkflow.setPdUserName(getMessage(update));
 
-        } else {
-            directionHandler(update);
-        }
+//        userWorkflow.setStep(CURRENCY);
+//        execute(addReplyButtonsWithCurrency(update, Collections.singletonList(Cancel)));
+
     }
 
     private void directionHandler(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (userWorkflow != null && DIRECTION.equals(userWorkflow.getStep())) {
-            String message = update.getMessage().getText();
-            userWorkflow.setFrom(message);
-            userWorkflow.setTo(PD.equals(message) ? STAKE : PD);
+//        String message = update.getMessage().getText();
+        userWorkflow.setFrom(getMessage(update));
+        userWorkflow.setTo(PD.equals(getMessage(update)) ? STAKE : PD);
 
-            execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
-            userWorkflow.setStep(STAKE_USER);
-        } else {
-            if (userWorkflow != null) {
-                userWorkflow.setStep(NO_HANDLER);
-                log.warn("There is no handler for that case");
-            }
-        }
+
+//        execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+//        userWorkflow.setStep(STAKE_USER);
     }
 
     private void startProcessing(Update update) throws Exception {
@@ -257,19 +323,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
     private void goToExchangeProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
         log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
-
-        InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
-        buttonSnake.setCallbackData(STAKE);
-        InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Stake");
-        buttonPD.setCallbackData(PD);
-        List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
-        execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
-
-        UserWorkflow userWorkflow = new UserWorkflow();
-        userWorkflow.setChatId(chatId);
-        userWorkflow.setStep(DIRECTION);
-        cacheService.add(chatId, userWorkflow);
-
+        handleRequest(update);
+        responseGenerator(update);
     }
 
     private void cancelProcessing(Update update) throws Exception {
@@ -311,7 +366,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
         return result.toString();
     }
 
-    private SendMessage addInlineButtons(long chatId, String text, List<InlineKeyboardButton> list) {
+    private SendMessage addInlineButtons(String chatId, String text, List<InlineKeyboardButton> list) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> listOfInlineButtons = new ArrayList<>();
         listOfInlineButtons.add(list);

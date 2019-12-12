@@ -2,6 +2,7 @@ package com.telegram.bot.model.enums;
 
 public enum Step {
 
+    START("Start step"),
     DIRECTION("Direction step"),
     STAKE_USER("Stake User Name"),
     CURRENCY("Currency setting up step"),
