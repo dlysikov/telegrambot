@@ -6,7 +6,9 @@ public enum Step {
     STAKE_USER("Stake User Name"),
     CURRENCY("Currency setting up step"),
     AMOUNT("Amount Choice"),
-    PD_USER("PD User Name");
+    PD_USER("PD User Name"),
+    NO_HANDLER("No Handler Step"),
+    HADLE_IS_DONE("Handle is done");
 
     private String stepDesc;
     Step(String desc) {

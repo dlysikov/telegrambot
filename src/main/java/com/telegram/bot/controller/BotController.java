@@ -2,6 +2,7 @@ package com.telegram.bot.controller;
 
 import com.telegram.bot.model.objects.fromcasino.Message;
 import com.telegram.bot.model.objects.fromcasino.Response;
+import com.telegram.bot.service.CacheService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -26,7 +27,7 @@ public class BotController {
     private RestTemplate restTemplate;
 
     @Autowired
-    private ExchangeBot bot;
+    private CacheService cacheService;
 
     @GetMapping(value = {"/", ""})
     public String start() {
@@ -78,10 +79,7 @@ public class BotController {
 
     @GetMapping("/print")
     public String printMaps() {
-        bot.printParamsMap();
-        System.out.println();
-        bot.printModeMap();
-        System.out.println();
+        cacheService.printCache();
         return "home";
     }
 

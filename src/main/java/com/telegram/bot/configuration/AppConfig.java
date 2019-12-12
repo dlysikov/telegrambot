@@ -23,4 +23,10 @@ public class AppConfig {
         return new RestTemplate(factory);
     }
 
+//    @Singleton
+//    @Bean
+//    public TelegramCacheFactory getTelegramCacheFactory() {
+//        return new TelegramCacheFactory();
+//    }
+
 }
