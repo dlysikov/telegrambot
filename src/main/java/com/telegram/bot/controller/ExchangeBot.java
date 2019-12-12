@@ -173,8 +173,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
             String message = update.getMessage().getText();
             if (userExists(message, env.getProperty("stake.token"), env.getProperty("stake.url"))) {
                 userWorkflow.setStakeUserName(message);
-                userWorkflow.setStep(CURRENCY);
-                execute(addReplyButtonsWithCurrency(update, Collections.singletonList(Cancel)));
+                userWorkflow.setStep(PD_USER);
+                execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
             } else {
                 execute(addReplyButtons(update, "User not found. Enter correct user:", Collections.singletonList(Cancel)));
             }
@@ -201,8 +201,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
         if (userWorkflow != null && AMOUNT.equals(userWorkflow.getStep())) {
             String message = update.getMessage().getText();
             userWorkflow.setAmount(Long.valueOf(message));
-            userWorkflow.setStep(PD_USER);
-            execute(addReplyButtons(update, "Enter PD username:", Collections.singletonList(Cancel)));
+            userWorkflow.setStep(HADLE_IS_DONE);
+
         } else {
             pdUserHandler(update);
         }
@@ -214,14 +214,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
         if (userWorkflow != null && PD_USER.equals(userWorkflow.getStep())) {
             String message = update.getMessage().getText();
             userWorkflow.setPdUserName(message);
-            userWorkflow.setStep(DIRECTION);
-
-            InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
-            buttonSnake.setCallbackData(STAKE);
-            InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Stake");
-            buttonPD.setCallbackData(PD);
-            List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
-            execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
+            userWorkflow.setStep(CURRENCY);
+            execute(addReplyButtonsWithCurrency(update, Collections.singletonList(Cancel)));
 
         } else {
             directionHandler(update);
@@ -234,7 +228,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
             String message = update.getMessage().getText();
             userWorkflow.setFrom(message);
             userWorkflow.setTo(PD.equals(message) ? STAKE : PD);
-            userWorkflow.setStep(HADLE_IS_DONE);
+
+            execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+            userWorkflow.setStep(STAKE_USER);
         } else {
             if (userWorkflow != null) {
                 userWorkflow.setStep(NO_HANDLER);
@@ -261,10 +257,17 @@ public class ExchangeBot extends TelegramLongPollingBot {
     private void goToExchangeProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
         log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
-        execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+
+        InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
+        buttonSnake.setCallbackData(STAKE);
+        InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Stake");
+        buttonPD.setCallbackData(PD);
+        List<InlineKeyboardButton> list = Arrays.asList(buttonSnake, buttonPD);
+        execute(addInlineButtons(Long.valueOf(chatId), "Make your choice:", list));
+
         UserWorkflow userWorkflow = new UserWorkflow();
         userWorkflow.setChatId(chatId);
-        userWorkflow.setStep(STAKE_USER);
+        userWorkflow.setStep(DIRECTION);
         cacheService.add(chatId, userWorkflow);
 
     }
