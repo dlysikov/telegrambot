@@ -1,8 +1,10 @@
 package com.telegram.bot.controller;
 
+import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.objects.fromcasino.Message;
 import com.telegram.bot.model.objects.fromcasino.Response;
 import com.telegram.bot.service.CacheService;
+import com.telegram.bot.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -11,11 +13,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.telegram.bot.utils.CommonUtils.getHeaders;
 
 @Controller
 @RequestMapping("/bot")
@@ -33,6 +38,9 @@ public class BotController {
     public String start() {
         return "home";
     }
+
+    @Autowired
+    private NotificationService notificationService;
 
 //    @Scheduled(cron = "${cron.request.period}")
     public void sendRequest() {
@@ -80,6 +88,21 @@ public class BotController {
     @GetMapping("/print")
     public String printMaps() {
         cacheService.printCache();
+        return "home";
+    }
+
+    @GetMapping("/send")
+    public String sendTest() {
+        notificationService.sendMail();
+        return "home";
+    }
+
+    @GetMapping("/check")
+    public String checkUser(@RequestParam(name = "name") String name) {
+        String json = "{\"query\":\"{  \\n  user {\\n    name id\\n    balances  {\\n     \\n      available {\\n       \\n       currency\\n     \\n        amount\\n      }\\n     \\n    }\\n  }\\n}\"}";
+        HttpEntity<String> request = new HttpEntity<>(json, getHeaders("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmOTMzNmI1ZC02ZWMzLTQ1YWItYjBhNC0yNzE1NjRhZDk3NzgiLCJpYXQiOjE1NzYwNTY4OTgsImV4cCI6MTU4MTI0MDg5OH0.EiL6egoLRLVO0bkZYobCZ6H13qPn5UookhNpmxazO4I"));
+        ResponseDTO responseDTO = restTemplate.postForObject("https://api.stake.com/graphql", request, ResponseDTO.class) ;
+        System.out.println(responseDTO);
         return "home";
     }
 

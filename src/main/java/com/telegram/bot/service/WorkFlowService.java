@@ -8,5 +8,6 @@ public interface WorkFlowService {
 
     Map<Step, Step> getWorkFlow();
     Step getNextStep(Step currentStep);
+    String getErrorResponse(Step step, String errorCode);
 
 }

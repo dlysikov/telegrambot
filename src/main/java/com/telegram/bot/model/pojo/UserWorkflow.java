@@ -12,10 +12,11 @@ public class UserWorkflow {
     private Step step;
     private String stakeUserName;
     private String pdUserName;
-    private Long amount;
+    private String amount;
     private Currency currency;
     private String from;
     private String to;
+    private String errorCode;
 
     public String getChatId() {
         return chatId;
@@ -41,11 +42,11 @@ public class UserWorkflow {
         this.pdUserName = pdUserName;
     }
 
-    public Long getAmount() {
+    public String getAmount() {
         return amount;
     }
 
-    public void setAmount(Long amount) {
+    public void setAmount(String amount) {
         this.amount = amount;
     }
 
@@ -89,6 +90,14 @@ public class UserWorkflow {
         this.step = step;
     }
 
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
     @Override
     public String toString() {
         return "UserWorkflow{" +
@@ -97,10 +106,11 @@ public class UserWorkflow {
                 ", step=" + step +
                 ", stakeUserName='" + stakeUserName + '\'' +
                 ", pdUserName='" + pdUserName + '\'' +
-                ", amount=" + amount +
+                ", amount='" + amount + '\'' +
                 ", currency=" + currency +
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
+                ", errorCode='" + errorCode + '\'' +
                 '}';
     }
 }

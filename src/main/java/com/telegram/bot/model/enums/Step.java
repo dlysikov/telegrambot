@@ -8,8 +8,8 @@ public enum Step {
     CURRENCY("Currency setting up step"),
     AMOUNT("Amount Choice"),
     PD_USER("PD User Name"),
-    NO_HANDLER("No Handler Step"),
-    HADLE_IS_DONE("Handle is done");
+    CHECK_RESULT("Check Result step"),
+    CONFIRM_RESULT("Confirm result step");
 
     private String stepDesc;
     Step(String desc) {
