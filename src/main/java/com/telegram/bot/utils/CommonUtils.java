@@ -66,4 +66,8 @@ public final class CommonUtils {
         return new HttpEntity<>(query, getHeaders(token));
     }
 
+    public static HttpEntity<String> getBalanceRequest(String query, String token) {
+        return new HttpEntity<>(query, getHeaders(token));
+    }
+
 }
