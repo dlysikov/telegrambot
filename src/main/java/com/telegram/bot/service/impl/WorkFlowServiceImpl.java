@@ -29,6 +29,7 @@ public class WorkFlowServiceImpl implements WorkFlowService {
 
         Map<String, String> amountErrors = new HashMap<>();
         amountErrors.put(AMOUNT_FORMAT_ERROR, "Amount should contain only digits.\nPlease try again:");
+        amountErrors.put(AMOUNT_AVAILABILITY_ERROR, "Sorry, at the moment we are not able to support exchange operation fot such big amount.\nPlease enter another value or try later:");
         workFlowErrorsMap.put(AMOUNT, amountErrors);
 
         Map<String, String> directionErrors = new HashMap<>();

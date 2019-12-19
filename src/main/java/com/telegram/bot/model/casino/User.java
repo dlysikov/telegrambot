@@ -7,6 +7,7 @@ public class User {
     private String id;
     private String name;
     private List<Balance> balances;
+    private List<Tip> tipList;
 
     public String getId() {
         return id;
@@ -32,12 +33,21 @@ public class User {
         this.balances = balances;
     }
 
+    public List<Tip> getTipList() {
+        return tipList;
+    }
+
+    public void setTipList(List<Tip> tipList) {
+        this.tipList = tipList;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                 "id='" + id + '\'' +
                 ", name='" + name + '\'' +
                 ", balances=" + balances +
+                ", tipList=" + tipList +
                 '}';
     }
 }

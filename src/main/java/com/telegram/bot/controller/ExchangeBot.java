@@ -24,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -203,7 +204,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
         }
     }
 
-    private void stakeUserHandler(Update update){
+    private void stakeUserHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (stakeService.userExists(getMessage(update))) {
             userWorkflow.setStakeUserName(getMessage(update));
@@ -225,11 +226,22 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void amountChoiceHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (isDigit(getMessage(update))) {
-            userWorkflow.setAmount(getMessage(update));
-        } else {
+        if (!isDigit(getMessage(update))) {
             userWorkflow.setErrorCode(AMOUNT_FORMAT_ERROR);
+        } else if (!isAmountAvailable(userWorkflow)) {
+            userWorkflow.setErrorCode(AMOUNT_AVAILABILITY_ERROR);
+        } else {
+            userWorkflow.setAmount(getMessage(update));
         }
+    }
+
+    private boolean isAmountAvailable(UserWorkflow userWorkflow) {
+        boolean result = false;
+        if (userWorkflow != null) {
+            BigDecimal amount = new BigDecimal(userWorkflow.getAmount());
+            result = userWorkflow.getFrom().equals(STAKE) ? stakeService.isBalanceAvailable(userWorkflow.getCurrency(), amount) : pdService.isBalanceAvailable(userWorkflow.getCurrency(), amount);
+        }
+        return result;
     }
 
     private void pdUserHandler(Update update) {
@@ -244,7 +256,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void directionHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (Arrays.asList(PD,STAKE).contains(getMessage(update))) {
+        if (Arrays.asList(PD, STAKE).contains(getMessage(update))) {
             userWorkflow.setFrom(getMessage(update));
             userWorkflow.setTo(PD.equals(getMessage(update)) ? STAKE : PD);
         } else {

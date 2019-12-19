@@ -1,5 +1,8 @@
 package com.telegram.bot.utils;
 
+import com.telegram.bot.model.casino.Account;
+import com.telegram.bot.model.casino.Balance;
+import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
 import com.telegram.bot.model.enums.Symbols;
@@ -10,6 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -66,8 +70,21 @@ public final class CommonUtils {
         return new HttpEntity<>(query, getHeaders(token));
     }
 
-    public static HttpEntity<String> getBalanceRequest(String query, String token) {
+    public static HttpEntity<String> getRequest(String query, String token) {
         return new HttpEntity<>(query, getHeaders(token));
+    }
+
+    public static boolean checkBalance(Currency currency, BigDecimal amount, ResponseDTO responseDTO) {
+        boolean result = false;
+        if (responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null ) {
+            Account account = responseDTO.getData().getUser().getBalances().stream()
+                    .filter(balance -> balance.getAvailable() != null && balance.getAvailable().getCurrency().equals(currency.getCode()))
+                    .findFirst().map(Balance::getAvailable).orElse(new Account());
+            if (account.getAmount() != null && account.getAmount().compareTo(amount) > 0) {
+                result = true;
+            }
+        }
+        return result;
     }
 
 }

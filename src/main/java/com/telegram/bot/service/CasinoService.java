@@ -9,6 +9,6 @@ public interface CasinoService {
 
     boolean userExists(String userName);
 
-    boolean isBalanceEnough(Currency currency, BigDecimal amount);
+    boolean isBalanceAvailable(Currency currency, BigDecimal amount);
 
 }
