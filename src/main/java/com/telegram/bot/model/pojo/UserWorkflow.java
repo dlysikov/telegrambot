@@ -10,7 +10,9 @@ public class UserWorkflow {
     private String chatId;
     private Date originalTimestamp = new Date();
     private Step step;
+    private String stakeUserId;
     private String stakeUserName;
+    private String pdUserId;
     private String pdUserName;
     private String amount;
     private Currency currency;
@@ -98,13 +100,31 @@ public class UserWorkflow {
         this.errorCode = errorCode;
     }
 
+    public String getStakeUserId() {
+        return stakeUserId;
+    }
+
+    public void setStakeUserId(String stakeUserId) {
+        this.stakeUserId = stakeUserId;
+    }
+
+    public String getPdUserId() {
+        return pdUserId;
+    }
+
+    public void setPdUserId(String pdUserId) {
+        this.pdUserId = pdUserId;
+    }
+
     @Override
     public String toString() {
         return "UserWorkflow{" +
                 "chatId='" + chatId + '\'' +
                 ", originalTimestamp=" + originalTimestamp +
                 ", step=" + step +
+                ", stakeUserId='" + stakeUserId + '\'' +
                 ", stakeUserName='" + stakeUserName + '\'' +
+                ", pdUserId='" + pdUserId + '\'' +
                 ", pdUserName='" + pdUserName + '\'' +
                 ", amount='" + amount + '\'' +
                 ", currency=" + currency +

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
 
+import javax.mail.MessagingException;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -92,7 +93,7 @@ public class BotController {
     }
 
     @GetMapping("/send")
-    public String sendTest() {
+    public String sendTest() throws MessagingException {
         notificationService.sendMail();
         return "home";
     }

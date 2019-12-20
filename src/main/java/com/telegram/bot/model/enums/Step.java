@@ -9,7 +9,9 @@ public enum Step {
     AMOUNT("Amount Choice"),
     PD_USER("PD User Name"),
     CHECK_RESULT("Check Result step"),
-    CONFIRM_RESULT("Confirm result step");
+    CONFIRM_RESULT("Confirm result step"),
+    DECISION_POINT("Decision point step")
+    ;
 
     private String stepDesc;
     Step(String desc) {

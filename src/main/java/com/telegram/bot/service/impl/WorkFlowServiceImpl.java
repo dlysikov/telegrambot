@@ -1,6 +1,7 @@
 package com.telegram.bot.service.impl;
 
 import com.telegram.bot.model.enums.Step;
+import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.service.WorkFlowService;
 import com.telegram.bot.utils.Constants;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,12 @@ public class WorkFlowServiceImpl implements WorkFlowService {
 
     static {
         workFlowMap.put(START, DIRECTION);
-        workFlowMap.put(DIRECTION, STAKE_USER);
-        workFlowMap.put(STAKE_USER, PD_USER);
-        workFlowMap.put(PD_USER, CURRENCY);
+        workFlowMap.put(DIRECTION, DECISION_POINT);
+        workFlowMap.put(STAKE_USER, DECISION_POINT);
+        workFlowMap.put(PD_USER, DECISION_POINT);
         workFlowMap.put(CURRENCY, AMOUNT);
         workFlowMap.put(AMOUNT, CHECK_RESULT);
-        workFlowMap.put(CHECK_RESULT, CHECK_RESULT);
+        workFlowMap.put(CHECK_RESULT, CONFIRM_RESULT);
 
 
         Map<String, String> amountErrors = new HashMap<>();
@@ -55,8 +56,23 @@ public class WorkFlowServiceImpl implements WorkFlowService {
     }
 
     @Override
-    public Step getNextStep(Step currentStep) {
-        return workFlowMap.get(currentStep);
+    public Step getNextStep(UserWorkflow userWorkflow) {
+        Step currentStep = userWorkflow.getStep();
+        Step nextStep = workFlowMap.get(currentStep);
+        if (DECISION_POINT.equals(nextStep)) {
+            switch (currentStep) {
+                case DIRECTION:
+                    nextStep = STAKE.equals(userWorkflow.getFrom()) ? STAKE_USER : PD_USER;
+                    break;
+                case STAKE_USER:
+                    nextStep = userWorkflow.getPdUserId() != null ? AMOUNT : PD_USER;
+                    break;
+                case PD_USER:
+                    nextStep = userWorkflow.getStakeUserId() != null ? AMOUNT : STAKE_USER;
+                    break;
+            }
+        }
+        return nextStep;
     }
 
     @Override

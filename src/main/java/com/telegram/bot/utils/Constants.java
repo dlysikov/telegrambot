@@ -10,5 +10,6 @@ public class Constants {
     public static final String WRONG_DIRECTION_ERROR = "Wrong direction error";
     public static final String WRONG_CURRENCY_ERROR = "Wrong currency error";
     public static final String WRONG_USER_ERROR = "Wrong user error";
+    public static final String EMPTY_VALUE_ERROR = "Empty value error";
 
 }

@@ -1,5 +1,6 @@
 package com.telegram.bot.controller;
 
+import com.telegram.bot.model.casino.User;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
 import com.telegram.bot.model.enums.Step;
@@ -37,7 +38,7 @@ import static com.telegram.bot.utils.CommonUtils.*;
 import static com.telegram.bot.utils.Constants.*;
 import static org.thymeleaf.util.StringUtils.isEmpty;
 
-@Component
+//@Component
 public class ExchangeBot extends TelegramLongPollingBot {
 
     private static Logger log = LoggerFactory.getLogger(ExchangeBot.class);
@@ -157,32 +158,29 @@ public class ExchangeBot extends TelegramLongPollingBot {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (userWorkflow != null) {
             if (isEmpty(userWorkflow.getErrorCode())) {
-                Step nextStep = workFlowService.getNextStep(userWorkflow.getStep());
-                switch (nextStep) {
-                    case DIRECTION:
-                        execute(addInlineButtons(getChatId(update), "Make your choice:", getDirectionButtons()));
-                        userWorkflow.setStep(DIRECTION);
-                        break;
-                    case STAKE_USER:
-                        execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
-                        userWorkflow.setStep(STAKE_USER);
-                        break;
-                    case PD_USER:
-                        execute(addReplyButtons(update, "Enter your PD username:", Collections.singletonList(Cancel)));
-                        userWorkflow.setStep(PD_USER);
-                        break;
-                    case CURRENCY:
-                        execute(addReplyButtonsWithCurrency(update, "Select currency from the list:", Collections.singletonList(Cancel)));
-                        userWorkflow.setStep(CURRENCY);
-                        break;
-                    case AMOUNT:
-                        execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
-                        userWorkflow.setStep(AMOUNT);
-                        break;
-                    case CHECK_RESULT:
-                        execute(addReplyButtons(update, "Check your result and Confirm or Cancel it:\n\n" + getResult(update), Arrays.asList(Confirm, Cancel)));
-                        userWorkflow.setStep(CONFIRM_RESULT);
-                        break;
+                Step nextStep = workFlowService.getNextStep(userWorkflow);
+                if (nextStep != null) {
+                    switch (nextStep) {
+                        case DIRECTION:
+                            execute(addInlineButtons(getChatId(update), "Make your choice:", getDirectionButtons()));
+                            break;
+                        case STAKE_USER:
+                            execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
+                            break;
+                        case PD_USER:
+                            execute(addReplyButtons(update, "Enter your PD username:", Collections.singletonList(Cancel)));
+                            break;
+                        case CURRENCY:
+                            execute(addReplyButtonsWithCurrency(update, "Select currency from the list:", Collections.singletonList(Cancel)));
+                            break;
+                        case AMOUNT:
+                            execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
+                            break;
+                        case CHECK_RESULT:
+                            execute(addReplyButtons(update, "Check your result and Confirm or Cancel it:\n\n" + getResult(update), Arrays.asList(Confirm, Cancel)));
+                            break;
+                    }
+                    userWorkflow.setStep(nextStep);
                 }
             } else {
                 switch (userWorkflow.getStep()) {
@@ -206,8 +204,14 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void stakeUserHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (stakeService.userExists(getMessage(update))) {
-            userWorkflow.setStakeUserName(getMessage(update));
+        if (isEmpty(getMessage(update))) {
+            userWorkflow.setErrorCode(EMPTY_VALUE_ERROR);
+            return;
+        }
+        User user = stakeService.getUserByName(getMessage(update));
+        if (user != null) {
+            userWorkflow.setStakeUserName(user.getName());
+            userWorkflow.setStakeUserId(user.getId());
         } else {
             userWorkflow.setErrorCode(WRONG_USER_ERROR);
         }
@@ -246,12 +250,17 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void pdUserHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (pdService.userExists(getMessage(update))) {
-            userWorkflow.setPdUserName(getMessage(update));
+        if (isEmpty(getMessage(update))) {
+            userWorkflow.setErrorCode(EMPTY_VALUE_ERROR);
+            return;
+        }
+        User user = stakeService.getUserByName(getMessage(update));
+        if (user != null) {
+            userWorkflow.setPdUserName(user.getName());
+            userWorkflow.setPdUserId(user.getId());
         } else {
             userWorkflow.setErrorCode(WRONG_USER_ERROR);
         }
-
     }
 
     private void directionHandler(Update update) {
