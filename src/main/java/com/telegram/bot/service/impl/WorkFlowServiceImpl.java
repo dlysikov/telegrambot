@@ -3,7 +3,6 @@ package com.telegram.bot.service.impl;
 import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.service.WorkFlowService;
-import com.telegram.bot.utils.Constants;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -65,10 +64,10 @@ public class WorkFlowServiceImpl implements WorkFlowService {
                     nextStep = STAKE.equals(userWorkflow.getFrom()) ? STAKE_USER : PD_USER;
                     break;
                 case STAKE_USER:
-                    nextStep = userWorkflow.getPdUserId() != null ? AMOUNT : PD_USER;
+                    nextStep = userWorkflow.getPdUserId() != null ? CURRENCY : PD_USER;
                     break;
                 case PD_USER:
-                    nextStep = userWorkflow.getStakeUserId() != null ? AMOUNT : STAKE_USER;
+                    nextStep = userWorkflow.getStakeUserId() != null ? CURRENCY : STAKE_USER;
                     break;
             }
         }

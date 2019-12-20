@@ -22,13 +22,13 @@ public abstract class CasinoServiceImpl implements CasinoService {
 
     private static Logger log = LoggerFactory.getLogger(CasinoServiceImpl.class);
 
-    private String token = null;
+    public abstract String getToken();
 
-    private String url = null;
+    public abstract String getUrl() ;
 
-    private String balanceQuery = null;
+    public abstract String getBalanceQuery() ;
 
-    private String tipsQuery = null;
+    public abstract String getTipsQuery();
 
     @Autowired
     private RestTemplate restTemplate;
@@ -37,7 +37,7 @@ public abstract class CasinoServiceImpl implements CasinoService {
     public User getUserByName(String userName) {
         User user;
                 try {
-                    ResponseDTO responseDTO = restTemplate.postForObject(url, getRequestForUserChecking(userName, this.token), ResponseDTO.class);
+                    ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequestForUserChecking(userName, getToken()), ResponseDTO.class);
                     if ( responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null) {
                         user = responseDTO.getData().getUser();
                     } else {
@@ -52,17 +52,18 @@ public abstract class CasinoServiceImpl implements CasinoService {
 
     @Override
     public boolean isBalanceAvailable(Currency currency, BigDecimal amount) {
-        ResponseDTO responseDTO = restTemplate.postForObject(url, getRequest(this.balanceQuery, this.token), ResponseDTO.class);
+        ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequest(getBalanceQuery(), getToken()), ResponseDTO.class);
         return checkBalance(currency, amount, responseDTO);
     }
 
     private boolean wasAmountRecieved(String userName) {
         boolean result = false;
-        ResponseDTO responseDTO = restTemplate.postForObject(url, getRequest(this.tipsQuery, this.token), ResponseDTO.class);
+        ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequest(getTipsQuery(), getToken()), ResponseDTO.class);
         if (responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null) {
             result = responseDTO.getData().getUser().getTipList().stream()
                     .anyMatch(tip -> tip.getSendBy() != null && userName.equalsIgnoreCase(tip.getSendBy().getName()));
         }
         return result;
     }
+
 }

@@ -94,7 +94,7 @@ public class BotController {
 
     @GetMapping("/send")
     public String sendTest() throws MessagingException {
-        notificationService.sendMail();
+//        notificationService.sendMail();
         return "home";
     }
 

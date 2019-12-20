@@ -7,6 +7,7 @@ import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.service.CacheService;
 import com.telegram.bot.service.CasinoService;
+import com.telegram.bot.service.NotificationService;
 import com.telegram.bot.service.WorkFlowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ import static com.telegram.bot.utils.CommonUtils.*;
 import static com.telegram.bot.utils.Constants.*;
 import static org.thymeleaf.util.StringUtils.isEmpty;
 
-//@Component
+@Component
 public class ExchangeBot extends TelegramLongPollingBot {
 
     private static Logger log = LoggerFactory.getLogger(ExchangeBot.class);
@@ -48,12 +49,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     @Value("${token}")
     private String token;
-
-    @Autowired
-    private RestTemplate restTemplate;
-
-    @Autowired
-    private Environment env;
 
     @Autowired
     private CacheService cacheService;
@@ -68,6 +63,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
     @Autowired
     @Qualifier("primeDiceService")
     private CasinoService pdService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -148,6 +146,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
         } else {
             UserWorkflow newUserWorkflow = new UserWorkflow();
             newUserWorkflow.setChatId(getChatId(update));
+            newUserWorkflow.setTelegramUserFirstName(update.getMessage().getFrom().getFirstName());
+            newUserWorkflow.setTelegramUserLastName(update.getMessage().getFrom().getLastName());
+            newUserWorkflow.setTelegramUserName(update.getMessage().getFrom().getUserName());
             newUserWorkflow.setStep(START);
             cacheService.add(getChatId(update), newUserWorkflow);
         }
@@ -178,6 +179,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             break;
                         case CHECK_RESULT:
                             execute(addReplyButtons(update, "Check your result and Confirm or Cancel it:\n\n" + getResult(update), Arrays.asList(Confirm, Cancel)));
+                            break;
+                        case CONFIRM_RESULT:
+                            execute(addReplyButtons(update, "Thank you! Your request will be proceeded in the nearest time. \nHave a good day :)", Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
                             break;
                     }
                     userWorkflow.setStep(nextStep);
@@ -232,17 +236,17 @@ public class ExchangeBot extends TelegramLongPollingBot {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (!isDigit(getMessage(update))) {
             userWorkflow.setErrorCode(AMOUNT_FORMAT_ERROR);
-        } else if (!isAmountAvailable(userWorkflow)) {
+        } else if (!isAmountAvailable(userWorkflow, getMessage(update))) {
             userWorkflow.setErrorCode(AMOUNT_AVAILABILITY_ERROR);
         } else {
             userWorkflow.setAmount(getMessage(update));
         }
     }
 
-    private boolean isAmountAvailable(UserWorkflow userWorkflow) {
+    private boolean isAmountAvailable(UserWorkflow userWorkflow, String value) {
         boolean result = false;
         if (userWorkflow != null) {
-            BigDecimal amount = new BigDecimal(userWorkflow.getAmount());
+            BigDecimal amount = new BigDecimal(value);
             result = userWorkflow.getFrom().equals(STAKE) ? stakeService.isBalanceAvailable(userWorkflow.getCurrency(), amount) : pdService.isBalanceAvailable(userWorkflow.getCurrency(), amount);
         }
         return result;
@@ -274,14 +278,15 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     }
 
-    private void checkResultHandler(Update update) {
-        UserWorkflow userWorkflow = getUserWorkflow(update);
-        log.info("Request for chatId {} is -> {}", getChatId(update), userWorkflow);
+    private void checkResultHandler(Update update) throws Exception{
+//        UserWorkflow userWorkflow = getUserWorkflow(update);
+        notificationService.sendMail(getUserWorkflow(update));
+        log.info("Request for chatId {} is -> {}", getChatId(update), getUserWorkflow(update));
     }
 
     private void confirmResultHandler(Update update) throws Exception {
-        cacheService.removeByChatId(getChatId(update));
-        execute(addReplyButtons(update, "Thank you! Your request will be proceeded in the nearest time. \nHave a good day :)", Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+//        cacheService.removeByChatId(getChatId(update));
+
         log.info("Request for chatId {} was confirmed and send to handler", getChatId(update));
     }
 

@@ -19,6 +19,9 @@ public class UserWorkflow {
     private String from;
     private String to;
     private String errorCode;
+    private String telegramUserName;
+    private String telegramUserFirstName;
+    private String telegramUserLastName;
 
     public String getChatId() {
         return chatId;
@@ -116,6 +119,30 @@ public class UserWorkflow {
         this.pdUserId = pdUserId;
     }
 
+    public String getTelegramUserName() {
+        return telegramUserName;
+    }
+
+    public void setTelegramUserName(String telegramUserName) {
+        this.telegramUserName = telegramUserName;
+    }
+
+    public String getTelegramUserFirstName() {
+        return telegramUserFirstName;
+    }
+
+    public void setTelegramUserFirstName(String telegramUserFirstName) {
+        this.telegramUserFirstName = telegramUserFirstName;
+    }
+
+    public String getTelegramUserLastName() {
+        return telegramUserLastName;
+    }
+
+    public void setTelegramUserLastName(String telegramUserLastName) {
+        this.telegramUserLastName = telegramUserLastName;
+    }
+
     @Override
     public String toString() {
         return "UserWorkflow{" +
@@ -131,6 +158,9 @@ public class UserWorkflow {
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
                 ", errorCode='" + errorCode + '\'' +
+                ", telegramUserName='" + telegramUserName + '\'' +
+                ", telegramUserFirstName='" + telegramUserFirstName + '\'' +
+                ", telegramUserLastName='" + telegramUserLastName + '\'' +
                 '}';
     }
 }
