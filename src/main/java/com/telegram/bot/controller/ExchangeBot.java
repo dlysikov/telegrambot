@@ -14,10 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
-import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -34,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.telegram.bot.model.enums.Actions.*;
-import static com.telegram.bot.model.enums.Step.*;
+import static com.telegram.bot.model.enums.Step.START;
 import static com.telegram.bot.utils.CommonUtils.*;
 import static com.telegram.bot.utils.Constants.*;
 import static org.thymeleaf.util.StringUtils.isEmpty;
@@ -137,9 +134,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
                     break;
                 case CHECK_RESULT:
                     checkResultHandler(update);
-                    break;
-                case CONFIRM_RESULT:
-                    confirmResultHandler(update);
                     break;
             }
 
@@ -279,15 +273,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
     }
 
     private void checkResultHandler(Update update) throws Exception{
-//        UserWorkflow userWorkflow = getUserWorkflow(update);
         notificationService.sendMail(getUserWorkflow(update));
         log.info("Request for chatId {} is -> {}", getChatId(update), getUserWorkflow(update));
-    }
-
-    private void confirmResultHandler(Update update) throws Exception {
-//        cacheService.removeByChatId(getChatId(update));
-
-        log.info("Request for chatId {} was confirmed and send to handler", getChatId(update));
     }
 
     private void startProcessing(Update update) throws Exception {
@@ -322,7 +309,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
         return MessageFormat.format("Hello {0}! I'm Your CryptoExchangeBot. Press “Go to Exchange” to start", update.getMessage().getFrom().getFirstName());
     }
 
-
     private SendMessage addReplyButtonsWithCurrency(Update update, String text, List<Actions> actionList) {
         return addReplyButtons(update, text, actionList, true);
     }
@@ -353,7 +339,6 @@ public class ExchangeBot extends TelegramLongPollingBot {
         inlineKeyboardMarkup.setKeyboard(listOfInlineButtons);
         return new SendMessage().setChatId(chatId).setText(text).setReplyMarkup(inlineKeyboardMarkup);
     }
-
 
     @Override
     public String getBotUsername() {
