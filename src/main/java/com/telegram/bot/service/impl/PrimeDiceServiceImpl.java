@@ -1,11 +1,8 @@
 package com.telegram.bot.service.impl;
 
-import com.telegram.bot.model.casino.User;
-import com.telegram.bot.model.enums.Currency;
+import com.telegram.bot.model.pojo.UserWorkflow;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
 
 @Service("primeDiceService")
 public class PrimeDiceServiceImpl extends CasinoServiceImpl {
@@ -15,6 +12,9 @@ public class PrimeDiceServiceImpl extends CasinoServiceImpl {
 
     @Value("${primedice.url}")
     private String url;
+
+    @Value("${primedice.chatId}")
+    private String chatId;
 
     @Value("${query.balance.check}")
     private String balanceQuery;
@@ -41,5 +41,15 @@ public class PrimeDiceServiceImpl extends CasinoServiceImpl {
     @Override
     public String getTipsQuery() {
         return this.tipsQuery;
+    }
+
+    @Override
+    public String getUserId(UserWorkflow userWorkflow) {
+        return userWorkflow.getPdUserId();
+    }
+
+    @Override
+    public String getChatId() {
+        return this.chatId;
     }
 }

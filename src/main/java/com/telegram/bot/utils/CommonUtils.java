@@ -70,6 +70,11 @@ public final class CommonUtils {
         return new HttpEntity<>(query, getHeaders(token));
     }
 
+    public static HttpEntity<String> getSendTipRequest(String userId, String amount, String currency, String chatId, String token) {
+        String query = "{\"query\":\"mutation SendTipMutation { sendTip( userId: \\\"" + userId + "\\\"  amount:" + amount + " currency: " + currency +" isPublic: false chatId: \\\"" + chatId + "\\\" ) { id amount currency user { id name} sendBy { id name } }}\"}";
+        return new HttpEntity<>(query, getHeaders(token));
+    }
+
     public static HttpEntity<String> getRequest(String query, String token) {
         return new HttpEntity<>(query, getHeaders(token));
     }

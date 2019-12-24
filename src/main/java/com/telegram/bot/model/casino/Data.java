@@ -4,6 +4,8 @@ public class Data {
 
     private User user;
 
+    private SendTip sendTip;
+
     public User getUser() {
         return user;
     }
@@ -12,10 +14,19 @@ public class Data {
         this.user = user;
     }
 
+    public SendTip getSendTip() {
+        return sendTip;
+    }
+
+    public void setSendTip(SendTip sendTip) {
+        this.sendTip = sendTip;
+    }
+
     @Override
     public String toString() {
         return "Data{" +
                 "user=" + user +
+                ", sendTip=" + sendTip +
                 '}';
     }
 }

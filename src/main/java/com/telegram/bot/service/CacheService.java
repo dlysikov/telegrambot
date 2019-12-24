@@ -8,5 +8,6 @@ public interface CacheService {
     void removeByChatId(String chatId);
     void add(String chatId, UserWorkflow userWorkflow);
     void printCache();
+    void resetUserWorkflow(UserWorkflow userWorkflow);
 
 }

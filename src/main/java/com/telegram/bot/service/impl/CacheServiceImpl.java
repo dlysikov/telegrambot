@@ -1,6 +1,7 @@
 package com.telegram.bot.service.impl;
 
 import com.telegram.bot.factory.TelegramCacheFactory;
+import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.service.CacheService;
 import org.slf4j.Logger;
@@ -39,5 +40,17 @@ public class CacheServiceImpl implements CacheService {
         } else {
             log.info("Empty workFlow Cache!");
         }
+    }
+
+    @Override
+    public void resetUserWorkflow(UserWorkflow userWorkflow) {
+        userWorkflow.setStep(Step.START);
+        userWorkflow.setErrorCode(null);
+        userWorkflow.setPdUserName(null);
+        userWorkflow.setPdUserId(null);
+        userWorkflow.setStakeUserId(null);
+        userWorkflow.setStakeUserName(null);
+        userWorkflow.setAmount(null);
+        userWorkflow.setCurrency(null);
     }
 }

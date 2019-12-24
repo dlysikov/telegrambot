@@ -1,5 +1,6 @@
 package com.telegram.bot.controller;
 
+import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.casino.User;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
@@ -83,6 +84,10 @@ public class ExchangeBot extends TelegramLongPollingBot {
                     }
                     case "✅Done": {
                         doneProcessing(update);
+                        break;
+                    }
+                    case "✅Retry": {
+                        goToRetryProcessing(update);
                         break;
                     }
                     default: {
@@ -176,6 +181,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             break;
                         case CONFIRM_RESULT:
                             execute(addReplyButtons(update, "Thank you! Your request will be proceeded in the nearest time. \nHave a good day :)", Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+                            cacheService.removeByChatId(getChatId(update));
                             break;
                     }
                     userWorkflow.setStep(nextStep);
@@ -194,6 +200,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
                         execute(addReplyButtons(update, workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), Collections.singletonList(Cancel)));
                         break;
                     }
+                    case CHECK_RESULT:
+                        execute(addReplyButtons(update, workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), Arrays.asList(Confirm, Retry, Cancel)));
+                        break;
                 }
                 userWorkflow.setErrorCode(null);
             }
@@ -241,7 +250,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
         boolean result = false;
         if (userWorkflow != null) {
             BigDecimal amount = new BigDecimal(value);
-            result = userWorkflow.getFrom().equals(STAKE) ? stakeService.isBalanceAvailable(userWorkflow.getCurrency(), amount) : pdService.isBalanceAvailable(userWorkflow.getCurrency(), amount);
+            CasinoService toCasinoService = getServiceTo(userWorkflow);
+            result = toCasinoService.isBalanceAvailable(userWorkflow.getCurrency(), amount);
         }
         return result;
     }
@@ -252,7 +262,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             userWorkflow.setErrorCode(EMPTY_VALUE_ERROR);
             return;
         }
-        User user = stakeService.getUserByName(getMessage(update));
+        User user = pdService.getUserByName(getMessage(update));
         if (user != null) {
             userWorkflow.setPdUserName(user.getName());
             userWorkflow.setPdUserId(user.getId());
@@ -273,20 +283,49 @@ public class ExchangeBot extends TelegramLongPollingBot {
     }
 
     private void checkResultHandler(Update update) throws Exception{
-        notificationService.sendMail(getUserWorkflow(update));
-        log.info("Request for chatId {} is -> {}", getChatId(update), getUserWorkflow(update));
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        CasinoService fromCasinoService = getServiceFrom(userWorkflow);
+        CasinoService toCasinoService = getServiceTo(userWorkflow);
+        boolean wasAmountReceived = fromCasinoService.wasAmountReceived(userWorkflow);
+
+        if (!wasAmountReceived) {
+            userWorkflow.setErrorCode(NO_AMOUNT_RECEIVED_ERROR);
+            return;
+        }
+
+        try {
+            ResponseDTO responseDTO = toCasinoService.sendTips(userWorkflow);
+            notificationService.sendMail(userWorkflow);
+            log.info("Request was successfully proceeded with responseDTO [{}]", responseDTO);
+        } catch (Exception exception) {
+            log.error("We have exception in the process of sending tips -> ", exception);
+        }
+
+    }
+
+    private CasinoService getServiceFrom(UserWorkflow userWorkflow) {
+        return userWorkflow.getFrom().equals(STAKE) ? stakeService : pdService;
+    }
+
+    private CasinoService getServiceTo(UserWorkflow userWorkflow) {
+        return userWorkflow.getTo().equals(STAKE) ? stakeService : pdService;
     }
 
     private void startProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
         log.info("Start processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
-        cacheService.removeByChatId(chatId);
+//        cacheService.removeByChatId(chatId);
     }
 
     private void goToExchangeProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
         log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        handleRequest(update);
+    }
+
+    private void goToRetryProcessing(Update update) throws Exception {
+        cacheService.resetUserWorkflow(getUserWorkflow(update));
         handleRequest(update);
     }
 

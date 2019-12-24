@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 import static com.telegram.bot.utils.CommonUtils.*;
 import static com.telegram.bot.utils.Constants.STAKE;
@@ -24,11 +25,17 @@ public abstract class CasinoServiceImpl implements CasinoService {
 
     public abstract String getToken();
 
-    public abstract String getUrl() ;
+    public abstract String getUrl();
 
-    public abstract String getBalanceQuery() ;
+    public abstract String getBalanceQuery();
 
     public abstract String getTipsQuery();
+
+    public abstract String getUserId(UserWorkflow userWorkflow);
+
+    public abstract String getChatId();
+
+    private long SHIFT_ACTIVITY = 1000 * 60 * 60 * 2;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -36,17 +43,17 @@ public abstract class CasinoServiceImpl implements CasinoService {
     @Override
     public User getUserByName(String userName) {
         User user;
-                try {
-                    ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequestForUserChecking(userName, getToken()), ResponseDTO.class);
-                    if ( responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null) {
-                        user = responseDTO.getData().getUser();
-                    } else {
-                        user = null;
-                    }
-                } catch (Exception exception) {
-                    log.error("We've got exception in getting user by name -> ", exception);
-                    user = null;
-                }
+        try {
+            ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequestForUserChecking(userName, getToken()), ResponseDTO.class);
+            if (responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null) {
+                user = responseDTO.getData().getUser();
+            } else {
+                user = null;
+            }
+        } catch (Exception exception) {
+            log.error("We've got exception in getting user by name -> ", exception);
+            user = null;
+        }
         return user;
     }
 
@@ -56,14 +63,26 @@ public abstract class CasinoServiceImpl implements CasinoService {
         return checkBalance(currency, amount, responseDTO);
     }
 
-    private boolean wasAmountRecieved(String userName) {
+    public boolean wasAmountReceived(UserWorkflow userWorkflow) {
         boolean result = false;
         ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getRequest(getTipsQuery(), getToken()), ResponseDTO.class);
         if (responseDTO != null && responseDTO.getData() != null && responseDTO.getData().getUser() != null) {
+            BigDecimal amountForCheck = new BigDecimal(userWorkflow.getAmount());
+            Date shiftedDate = new Date(userWorkflow.getOriginalTimestamp().getTime() - SHIFT_ACTIVITY);
             result = responseDTO.getData().getUser().getTipList().stream()
-                    .anyMatch(tip -> tip.getSendBy() != null && userName.equalsIgnoreCase(tip.getSendBy().getName()));
+                    .anyMatch(tip -> tip.getSendBy() != null && getUserId(userWorkflow).equalsIgnoreCase(tip.getSendBy().getId())
+                            && userWorkflow.getCurrency().getCode().equals(tip.getCurrency())
+                            && amountForCheck.compareTo(tip.getAmount()) == 0
+                            && tip.getCreatedAt().after(shiftedDate)
+                    );
+
         }
         return result;
+    }
+
+    public ResponseDTO sendTips(UserWorkflow userWorkflow) {
+        ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getSendTipRequest(getUserId(userWorkflow), userWorkflow.getAmount(), userWorkflow.getCurrency().getCode(), getChatId(), getToken()), ResponseDTO.class);
+    return responseDTO;
     }
 
 }

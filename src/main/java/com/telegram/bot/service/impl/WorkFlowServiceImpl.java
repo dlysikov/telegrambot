@@ -47,6 +47,10 @@ public class WorkFlowServiceImpl implements WorkFlowService {
         Map<String, String> pdUserErrors = new HashMap<>();
         pdUserErrors.put(WRONG_USER_ERROR, "User not found. Enter correct PrimeDice user:");
         workFlowErrorsMap.put(PD_USER, pdUserErrors);
+
+        Map<String, String> checkResultsError = new HashMap<>();
+        checkResultsError.put(NO_AMOUNT_RECEIVED_ERROR, "Sorry. We can't find any exchange from you with such userName, currency and amount.\nPlease double check all attributes you entered. You can Confirm it one more time or Cancel it and create one more with right attributes:");
+        workFlowErrorsMap.put(CHECK_RESULT, checkResultsError);
     }
 
     @Override
