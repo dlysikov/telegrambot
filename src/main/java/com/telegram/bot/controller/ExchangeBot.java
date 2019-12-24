@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.telegram.bot.model.enums.Actions.*;
+import static com.telegram.bot.model.enums.PreDefinedErrors.*;
 import static com.telegram.bot.model.enums.Step.START;
 import static com.telegram.bot.utils.CommonUtils.*;
 import static com.telegram.bot.utils.Constants.*;
@@ -157,7 +158,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
     private void responseGenerator(Update update) throws Exception {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (userWorkflow != null) {
-            if (isEmpty(userWorkflow.getErrorCode())) {
+            if (isEmpty(userWorkflow.getErrorMessage())) {
                 Step nextStep = workFlowService.getNextStep(userWorkflow);
                 if (nextStep != null) {
                     switch (nextStep) {
@@ -189,30 +190,41 @@ public class ExchangeBot extends TelegramLongPollingBot {
             } else {
                 switch (userWorkflow.getStep()) {
                     case DIRECTION:
-                        execute(addInlineButtons(getChatId(update), workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), getDirectionButtons()));
+                        execute(addInlineButtons(getChatId(update), userWorkflow.getErrorMessage(), getDirectionButtons()));
                         break;
                     case CURRENCY:
-                        execute(addReplyButtonsWithCurrency(update, workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), Collections.singletonList(Cancel)));
+                        execute(addReplyButtonsWithCurrency(update, userWorkflow.getErrorMessage(), Collections.singletonList(Cancel)));
                         break;
                     case AMOUNT:
                     case STAKE_USER:
                     case PD_USER: {
-                        execute(addReplyButtons(update, workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), Collections.singletonList(Cancel)));
+                        execute(addReplyButtons(update, userWorkflow.getErrorMessage(), Collections.singletonList(Cancel)));
                         break;
                     }
                     case CHECK_RESULT:
-                        execute(addReplyButtons(update, workFlowService.getErrorResponse(userWorkflow.getStep(), userWorkflow.getErrorCode()), Arrays.asList(Confirm, Retry, Cancel)));
+                        execute(addReplyButtons(update, userWorkflow.getErrorMessage(), Arrays.asList(Confirm, Retry, Cancel)));
                         break;
                 }
-                userWorkflow.setErrorCode(null);
+                userWorkflow.setErrorMessage(null);
             }
         }
+    }
+
+    private void directionHandler(Update update) {
+        UserWorkflow userWorkflow = getUserWorkflow(update);
+        if (Arrays.asList(PD, STAKE).contains(getMessage(update))) {
+            userWorkflow.setFrom(getMessage(update));
+            userWorkflow.setTo(PD.equals(getMessage(update)) ? STAKE : PD);
+        } else {
+            userWorkflow.setErrorMessage(WRONG_DIRECTION_ERROR.getMessage());
+        }
+
     }
 
     private void stakeUserHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (isEmpty(getMessage(update))) {
-            userWorkflow.setErrorCode(EMPTY_VALUE_ERROR);
+            userWorkflow.setErrorMessage(EMPTY_VALUE_ERROR.getMessage());
             return;
         }
         User user = stakeService.getUserByName(getMessage(update));
@@ -220,7 +232,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             userWorkflow.setStakeUserName(user.getName());
             userWorkflow.setStakeUserId(user.getId());
         } else {
-            userWorkflow.setErrorCode(WRONG_USER_ERROR);
+            userWorkflow.setErrorMessage(WRONG_STAKE_USER_ERROR.getMessage());
         }
     }
 
@@ -230,7 +242,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             Currency currency = Currency.valueOf(getMessage(update).substring(2).toUpperCase());
             userWorkflow.setCurrency(currency);
         } else {
-            userWorkflow.setErrorCode(WRONG_CURRENCY_ERROR);
+            userWorkflow.setErrorMessage(WRONG_CURRENCY_ERROR.getMessage());
         }
 
     }
@@ -238,9 +250,9 @@ public class ExchangeBot extends TelegramLongPollingBot {
     private void amountChoiceHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (!isDigit(getMessage(update))) {
-            userWorkflow.setErrorCode(AMOUNT_FORMAT_ERROR);
+            userWorkflow.setErrorMessage(AMOUNT_FORMAT_ERROR.getMessage());
         } else if (!isAmountAvailable(userWorkflow, getMessage(update))) {
-            userWorkflow.setErrorCode(AMOUNT_AVAILABILITY_ERROR);
+            userWorkflow.setErrorMessage(AMOUNT_AVAILABILITY_ERROR.getMessage());
         } else {
             userWorkflow.setAmount(getMessage(update));
         }
@@ -259,7 +271,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
     private void pdUserHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         if (isEmpty(getMessage(update))) {
-            userWorkflow.setErrorCode(EMPTY_VALUE_ERROR);
+            userWorkflow.setErrorMessage(EMPTY_VALUE_ERROR.getMessage());
             return;
         }
         User user = pdService.getUserByName(getMessage(update));
@@ -267,20 +279,11 @@ public class ExchangeBot extends TelegramLongPollingBot {
             userWorkflow.setPdUserName(user.getName());
             userWorkflow.setPdUserId(user.getId());
         } else {
-            userWorkflow.setErrorCode(WRONG_USER_ERROR);
+            userWorkflow.setErrorMessage(WRONG_PD_USER_ERROR.getMessage());
         }
     }
 
-    private void directionHandler(Update update) {
-        UserWorkflow userWorkflow = getUserWorkflow(update);
-        if (Arrays.asList(PD, STAKE).contains(getMessage(update))) {
-            userWorkflow.setFrom(getMessage(update));
-            userWorkflow.setTo(PD.equals(getMessage(update)) ? STAKE : PD);
-        } else {
-            userWorkflow.setErrorCode(WRONG_DIRECTION_ERROR);
-        }
 
-    }
 
     private void checkResultHandler(Update update) throws Exception{
         UserWorkflow userWorkflow = getUserWorkflow(update);
@@ -289,14 +292,19 @@ public class ExchangeBot extends TelegramLongPollingBot {
         boolean wasAmountReceived = fromCasinoService.wasAmountReceived(userWorkflow);
 
         if (!wasAmountReceived) {
-            userWorkflow.setErrorCode(NO_AMOUNT_RECEIVED_ERROR);
+            userWorkflow.setErrorMessage(NO_AMOUNT_RECEIVED_ERROR.getMessage());
             return;
         }
 
         try {
             ResponseDTO responseDTO = toCasinoService.sendTips(userWorkflow);
-            notificationService.sendMail(userWorkflow);
-            log.info("Request was successfully proceeded with responseDTO [{}]", responseDTO);
+            if (responseDTO.getErrors().isEmpty()) {
+                notificationService.sendMail(userWorkflow);
+                log.info("Request was successfully proceeded with responseDTO [{}]", responseDTO);
+            } else {
+                userWorkflow.setErrorMessage(responseDTO.getErrors().get(0).getMessage());
+            }
+
         } catch (Exception exception) {
             log.error("We have exception in the process of sending tips -> ", exception);
         }

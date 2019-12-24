@@ -35,7 +35,7 @@ public abstract class CasinoServiceImpl implements CasinoService {
 
     public abstract String getChatId();
 
-    private long SHIFT_ACTIVITY = 1000 * 60 * 60 * 2;
+    private long SHIFT_ACTIVITY = 1000 * 60 * 60 * 5;
 
     @Autowired
     private RestTemplate restTemplate;

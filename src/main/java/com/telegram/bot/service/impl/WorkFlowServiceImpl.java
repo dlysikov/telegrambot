@@ -25,32 +25,6 @@ public class WorkFlowServiceImpl implements WorkFlowService {
         workFlowMap.put(CURRENCY, AMOUNT);
         workFlowMap.put(AMOUNT, CHECK_RESULT);
         workFlowMap.put(CHECK_RESULT, CONFIRM_RESULT);
-
-
-        Map<String, String> amountErrors = new HashMap<>();
-        amountErrors.put(AMOUNT_FORMAT_ERROR, "Amount should contain only digits.\nPlease try again:");
-        amountErrors.put(AMOUNT_AVAILABILITY_ERROR, "Sorry, at the moment we are not able to support exchange operation fot such big amount.\nPlease enter another value or try later:");
-        workFlowErrorsMap.put(AMOUNT, amountErrors);
-
-        Map<String, String> directionErrors = new HashMap<>();
-        directionErrors.put(WRONG_DIRECTION_ERROR, "Wrong direction error.\nPlease choose one from the following:");
-        workFlowErrorsMap.put(DIRECTION, directionErrors);
-
-        Map<String, String> currencyErrors = new HashMap<>();
-        currencyErrors.put(WRONG_CURRENCY_ERROR, "Wrong currency.\nPlease choose one from the list:");
-        workFlowErrorsMap.put(CURRENCY, currencyErrors);
-
-        Map<String, String> stakeUserErrors = new HashMap<>();
-        stakeUserErrors.put(WRONG_USER_ERROR, "User not found. Enter correct Stake user:");
-        workFlowErrorsMap.put(STAKE_USER, stakeUserErrors);
-
-        Map<String, String> pdUserErrors = new HashMap<>();
-        pdUserErrors.put(WRONG_USER_ERROR, "User not found. Enter correct PrimeDice user:");
-        workFlowErrorsMap.put(PD_USER, pdUserErrors);
-
-        Map<String, String> checkResultsError = new HashMap<>();
-        checkResultsError.put(NO_AMOUNT_RECEIVED_ERROR, "Sorry. We can't find any exchange from you with such userName, currency and amount.\nPlease double check all attributes you entered. You can Confirm it one more time or Cancel it and create one more with right attributes:");
-        workFlowErrorsMap.put(CHECK_RESULT, checkResultsError);
     }
 
     @Override

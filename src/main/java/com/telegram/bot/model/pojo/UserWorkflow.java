@@ -18,7 +18,7 @@ public class UserWorkflow {
     private Currency currency;
     private String from;
     private String to;
-    private String errorCode;
+    private String errorMessage;
     private String telegramUserName;
     private String telegramUserFirstName;
     private String telegramUserLastName;
@@ -95,12 +95,12 @@ public class UserWorkflow {
         this.step = step;
     }
 
-    public String getErrorCode() {
-        return errorCode;
+    public String getErrorMessage() {
+        return errorMessage;
     }
 
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
     public String getStakeUserId() {
@@ -157,7 +157,7 @@ public class UserWorkflow {
                 ", currency=" + currency +
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
-                ", errorCode='" + errorCode + '\'' +
+                ", errorCode='" + errorMessage + '\'' +
                 ", telegramUserName='" + telegramUserName + '\'' +
                 ", telegramUserFirstName='" + telegramUserFirstName + '\'' +
                 ", telegramUserLastName='" + telegramUserLastName + '\'' +
