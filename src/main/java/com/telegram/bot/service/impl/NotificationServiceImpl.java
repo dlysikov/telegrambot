@@ -4,7 +4,6 @@ import com.telegram.bot.model.pojo.UserWorkflow;
 import com.telegram.bot.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +11,10 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.text.MessageFormat;
+import java.util.Date;
 import java.util.StringTokenizer;
+
+import static org.apache.http.util.TextUtils.isEmpty;
 
 @Component
 public class NotificationServiceImpl implements NotificationService {
@@ -27,8 +29,8 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendMail(UserWorkflow userWorkflow) throws MessagingException {
         MimeMessage mailMessage = javaMailSender.createMimeMessage();
         addRecipients(mailMessage);
-
-        String text =  "Please be informed that an exchange request was proceeded with the following attributes: \n" +
+        String status = isEmpty(userWorkflow.getErrorMessage()) ? "SUCCESS" : "ERROR";
+        String text =  MessageFormat.format("Please be informed that an exchange request was proceeded with status {0} and has following attributes: \n", status) +
                 MessageFormat.format("From: {0} \n", userWorkflow.getFrom()) +
                 MessageFormat.format("To: {0} \n", userWorkflow.getTo()) +
                 MessageFormat.format("Stake userId: {0}\n", userWorkflow.getStakeUserId()) +
@@ -37,11 +39,13 @@ public class NotificationServiceImpl implements NotificationService {
                 MessageFormat.format("PD username: {0}\n", userWorkflow.getPdUserName()) +
                 MessageFormat.format("Currency: {0} \n", userWorkflow.getCurrency()) +
                 MessageFormat.format("Amount: {0}\n\n", userWorkflow.getAmount()) +
+                MessageFormat.format("Error: {0}\n", isEmpty(userWorkflow.getErrorMessage()) ? "NONE" : userWorkflow.getErrorMessage()) +
                 MessageFormat.format("Telegram UserName: {0}\n", userWorkflow.getTelegramUserName()) +
                 MessageFormat.format("Telegram first name: {0}\n", userWorkflow.getTelegramUserFirstName()) +
-                MessageFormat.format("Telegram last name: {0}\n", userWorkflow.getTelegramUserLastName());
+                MessageFormat.format("Telegram last name: {0}\n\n", userWorkflow.getTelegramUserLastName()) +
+                MessageFormat.format("Operation timestamp: {0}\n", new Date());
 
-        mailMessage.setSubject(MessageFormat.format("Exchange request from {0} to {1}", userWorkflow.getFrom(), userWorkflow.getTo()));
+        mailMessage.setSubject(MessageFormat.format("{2}. Exchange request from {0} to {1}", userWorkflow.getFrom(), userWorkflow.getTo()), status);
         mailMessage.setText(text);
         javaMailSender.send(mailMessage);
     }

@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.telegram.bot.model.enums.Step.*;
-import static com.telegram.bot.utils.Constants.*;
+import static com.telegram.bot.utils.Constants.STAKE;
 
 @Service
 public class WorkFlowServiceImpl implements WorkFlowService {

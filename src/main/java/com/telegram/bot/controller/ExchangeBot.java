@@ -35,7 +35,8 @@ import static com.telegram.bot.model.enums.Actions.*;
 import static com.telegram.bot.model.enums.PreDefinedErrors.*;
 import static com.telegram.bot.model.enums.Step.START;
 import static com.telegram.bot.utils.CommonUtils.*;
-import static com.telegram.bot.utils.Constants.*;
+import static com.telegram.bot.utils.Constants.PD;
+import static com.telegram.bot.utils.Constants.STAKE;
 import static org.thymeleaf.util.StringUtils.isEmpty;
 
 @Component
@@ -298,14 +299,16 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
         try {
             ResponseDTO responseDTO = toCasinoService.sendTips(userWorkflow);
-            if (responseDTO.getErrors().isEmpty()) {
+            if (responseDTO.getErrors() == null || responseDTO.getErrors().isEmpty()) {
                 notificationService.sendMail(userWorkflow);
                 log.info("Request was successfully proceeded with responseDTO [{}]", responseDTO);
             } else {
                 userWorkflow.setErrorMessage(responseDTO.getErrors().get(0).getMessage());
+                notificationService.sendMail(userWorkflow);
             }
 
         } catch (Exception exception) {
+            userWorkflow.setErrorMessage("Internal server error. Please contact admin person");
             log.error("We have exception in the process of sending tips -> ", exception);
         }
 

@@ -5,7 +5,7 @@ public enum PreDefinedErrors {
     EMPTY_VALUE_ERROR("Value can not be empty"),
     WRONG_DIRECTION_ERROR("Wrong direction error.\nPlease choose one from the following:"),
     AMOUNT_FORMAT_ERROR("Amount should contain only digits.\nPlease try again:"),
-    AMOUNT_AVAILABILITY_ERROR("Sorry, at the moment we are not able to support exchange operation fot such big amount.\nPlease enter another value or try later:"),
+    AMOUNT_AVAILABILITY_ERROR("Sorry, at the moment we are not able to support exchange operation for such big amount.\nPlease enter another value or try later:"),
     WRONG_CURRENCY_ERROR("Wrong currency.\nPlease choose one from the list:"),
     WRONG_STAKE_USER_ERROR("User not found. Enter correct Stake user:"),
     WRONG_PD_USER_ERROR("User not found. Enter correct Primedice user:"),

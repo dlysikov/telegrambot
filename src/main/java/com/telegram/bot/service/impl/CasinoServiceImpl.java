@@ -1,6 +1,5 @@
 package com.telegram.bot.service.impl;
 
-import com.telegram.bot.controller.ExchangeBot;
 import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.casino.User;
 import com.telegram.bot.model.enums.Currency;
@@ -16,7 +15,6 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 import static com.telegram.bot.utils.CommonUtils.*;
-import static com.telegram.bot.utils.Constants.STAKE;
 
 @Service
 public abstract class CasinoServiceImpl implements CasinoService {
@@ -35,7 +33,7 @@ public abstract class CasinoServiceImpl implements CasinoService {
 
     public abstract String getChatId();
 
-    private long SHIFT_ACTIVITY = 1000 * 60 * 60 * 5;
+    private long SHIFT_ACTIVITY = 1000 * 60 * 5;
 
     @Autowired
     private RestTemplate restTemplate;
