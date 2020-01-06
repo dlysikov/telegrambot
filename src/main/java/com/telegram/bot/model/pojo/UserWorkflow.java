@@ -15,6 +15,7 @@ public class UserWorkflow {
     private String pdUserId;
     private String pdUserName;
     private String amount;
+    private String amountForExchange;
     private Currency currency;
     private String from;
     private String to;
@@ -143,6 +144,14 @@ public class UserWorkflow {
         this.telegramUserLastName = telegramUserLastName;
     }
 
+    public String getAmountForExchange() {
+        return amountForExchange;
+    }
+
+    public void setAmountForExchange(String amountForExchange) {
+        this.amountForExchange = amountForExchange;
+    }
+
     @Override
     public String toString() {
         return "UserWorkflow{" +
@@ -154,10 +163,11 @@ public class UserWorkflow {
                 ", pdUserId='" + pdUserId + '\'' +
                 ", pdUserName='" + pdUserName + '\'' +
                 ", amount='" + amount + '\'' +
+                ", amountForExchange='" + amountForExchange + '\'' +
                 ", currency=" + currency +
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
-                ", errorCode='" + errorMessage + '\'' +
+                ", errorMessage='" + errorMessage + '\'' +
                 ", telegramUserName='" + telegramUserName + '\'' +
                 ", telegramUserFirstName='" + telegramUserFirstName + '\'' +
                 ", telegramUserLastName='" + telegramUserLastName + '\'' +

@@ -6,6 +6,7 @@ public enum PreDefinedErrors {
     WRONG_DIRECTION_ERROR("Wrong direction error.\nPlease choose one from the following:"),
     AMOUNT_FORMAT_ERROR("Amount should contain only digits.\nPlease try again:"),
     AMOUNT_AVAILABILITY_ERROR("Sorry, at the moment we are not able to support exchange operation for such big amount.\nPlease enter another value or try later:"),
+    MIN_AMOUNT_ERROR("Amount you've entered is below minimum.\nPlease try again"),
     WRONG_CURRENCY_ERROR("Wrong currency.\nPlease choose one from the list:"),
     WRONG_STAKE_USER_ERROR("User not found. Enter correct Stake user:"),
     WRONG_PD_USER_ERROR("User not found. Enter correct Primedice user:"),

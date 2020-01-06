@@ -250,21 +250,29 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void amountChoiceHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
+        BigDecimal amountForExchange;
         if (!isDigit(getMessage(update))) {
             userWorkflow.setErrorMessage(AMOUNT_FORMAT_ERROR.getMessage());
-        } else if (!isAmountAvailable(userWorkflow, getMessage(update))) {
+            return;
+        } else {
+            amountForExchange = new BigDecimal(getMessage(update)).multiply(new BigDecimal("0.97"));
+        }
+
+        if (new BigDecimal(getMessage(update)).compareTo(new BigDecimal(userWorkflow.getCurrency().getMinAmount())) < 0) {
+            userWorkflow.setErrorMessage(MIN_AMOUNT_ERROR.getMessage());
+        } else if (!isAmountAvailable(userWorkflow, amountForExchange)) {
             userWorkflow.setErrorMessage(AMOUNT_AVAILABILITY_ERROR.getMessage());
         } else {
             userWorkflow.setAmount(getMessage(update));
+            userWorkflow.setAmountForExchange(amountForExchange.toString());
         }
     }
 
-    private boolean isAmountAvailable(UserWorkflow userWorkflow, String value) {
+    private boolean isAmountAvailable(UserWorkflow userWorkflow, BigDecimal value) {
         boolean result = false;
         if (userWorkflow != null) {
-            BigDecimal amount = new BigDecimal(value);
             CasinoService toCasinoService = getServiceTo(userWorkflow);
-            result = toCasinoService.isBalanceAvailable(userWorkflow.getCurrency(), amount);
+            result = toCasinoService.isBalanceAvailable(userWorkflow.getCurrency(), value);
         }
         return result;
     }
@@ -379,7 +387,8 @@ public class ExchangeBot extends TelegramLongPollingBot {
                 MessageFormat.format("Stake username: {0} \n", userWorkflow.getStakeUserName()) +
                 MessageFormat.format("PD username: {0} \n", userWorkflow.getPdUserName()) +
                 MessageFormat.format("Currency: {0} \n", userWorkflow.getCurrency().getCode()) +
-                MessageFormat.format("Amount: {0}", userWorkflow.getAmount());
+                MessageFormat.format("Amount: {0} \n", userWorkflow.getAmount()) +
+                MessageFormat.format("Amount that will be received: {0}", userWorkflow.getAmountForExchange());
     }
 
     private SendMessage addInlineButtons(String chatId, String text, List<InlineKeyboardButton> list) {

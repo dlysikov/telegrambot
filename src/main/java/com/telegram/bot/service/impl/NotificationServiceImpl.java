@@ -38,14 +38,15 @@ public class NotificationServiceImpl implements NotificationService {
                 MessageFormat.format("PD userId: {0}\n", userWorkflow.getPdUserId()) +
                 MessageFormat.format("PD username: {0}\n", userWorkflow.getPdUserName()) +
                 MessageFormat.format("Currency: {0} \n", userWorkflow.getCurrency()) +
-                MessageFormat.format("Amount: {0}\n\n", userWorkflow.getAmount()) +
+                MessageFormat.format("Amount: {0}\n", userWorkflow.getAmount()) +
+                MessageFormat.format("Amount for Exchange: {0}\n\n", userWorkflow.getAmountForExchange()) +
                 MessageFormat.format("Error: {0}\n", isEmpty(userWorkflow.getErrorMessage()) ? "NONE" : userWorkflow.getErrorMessage()) +
                 MessageFormat.format("Telegram UserName: {0}\n", userWorkflow.getTelegramUserName()) +
                 MessageFormat.format("Telegram first name: {0}\n", userWorkflow.getTelegramUserFirstName()) +
                 MessageFormat.format("Telegram last name: {0}\n\n", userWorkflow.getTelegramUserLastName()) +
                 MessageFormat.format("Operation timestamp: {0}\n", new Date());
 
-        mailMessage.setSubject(MessageFormat.format("{2}. Exchange request from {0} to {1}", userWorkflow.getFrom(), userWorkflow.getTo()), status);
+        mailMessage.setSubject(MessageFormat.format("{2}. Exchange request from {0} to {1}", userWorkflow.getFrom(), userWorkflow.getTo(), status));
         mailMessage.setText(text);
         javaMailSender.send(mailMessage);
     }
