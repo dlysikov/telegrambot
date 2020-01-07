@@ -316,10 +316,11 @@ public class ExchangeBot extends TelegramLongPollingBot {
             }
 
         } catch (Exception exception) {
-            userWorkflow.setErrorMessage("Internal server error. Please contact admin person");
             log.error("We have exception in the process of sending tips -> ", exception);
+            userWorkflow.setErrorMessage(exception.getMessage());
+            notificationService.sendMail(userWorkflow);
+            userWorkflow.setErrorMessage("Internal server error. Please contact admin person");
         }
-
     }
 
     private CasinoService getServiceFrom(UserWorkflow userWorkflow) {
@@ -332,14 +333,13 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void startProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
-        log.info("Start processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        log.info("Start processing for chatId [{}] with firstName [{}] and lastName [{}]", chatId, update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName());
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
-//        cacheService.removeByChatId(chatId);
     }
 
     private void goToExchangeProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
-        log.info("Go To Exchange processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        log.info("Go To Exchange processing for chatId [{}] with firstName [{}] and lastName [{}]", chatId, update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName());
         handleRequest(update);
     }
 
@@ -350,7 +350,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void cancelProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
-        log.info("Cancel processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        log.info("Cancel processing for chatId [{}] with firstName [{}] and lastName [{}]", chatId, update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName());
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
 
         cacheService.removeByChatId(chatId);
@@ -358,7 +358,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
     private void doneProcessing(Update update) throws Exception {
         String chatId = String.valueOf(update.getMessage().getChatId());
-        log.info("Done processing for [{}] [{}] with chatId [{}]", update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName(), chatId);
+        log.info("Done processing for chatId [{}] with firstName [{}] and lastName [{}]", chatId, update.getMessage().getFrom().getFirstName(), update.getMessage().getFrom().getLastName());
         execute(addReplyButtons(update, getHelloMsg(update), Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
         System.out.println("Success!");
     }
