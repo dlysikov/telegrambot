@@ -83,4 +83,9 @@ public abstract class CasinoServiceImpl implements CasinoService {
     return responseDTO;
     }
 
+    public ResponseDTO sendTipsBack(UserWorkflow userWorkflow) {
+        ResponseDTO responseDTO = restTemplate.postForObject(getUrl(), getSendTipRequest(getUserId(userWorkflow), userWorkflow.getAmount(), userWorkflow.getCurrency().getCode(), getChatId(), getToken()), ResponseDTO.class);
+        return responseDTO;
+    }
+
 }

@@ -13,4 +13,5 @@ public interface CasinoService {
     boolean isBalanceAvailable(Currency currency, BigDecimal amount);
     boolean wasAmountReceived(UserWorkflow userWorkflow);
     ResponseDTO sendTips(UserWorkflow userWorkflow);
+    ResponseDTO sendTipsBack(UserWorkflow userWorkflow);
 }

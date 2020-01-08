@@ -294,7 +294,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
 
 
 
-    private void checkResultHandler(Update update) throws Exception{
+    private void checkResultHandler(Update update) {
         UserWorkflow userWorkflow = getUserWorkflow(update);
         CasinoService fromCasinoService = getServiceFrom(userWorkflow);
         CasinoService toCasinoService = getServiceTo(userWorkflow);
@@ -308,18 +308,24 @@ public class ExchangeBot extends TelegramLongPollingBot {
         try {
             ResponseDTO responseDTO = toCasinoService.sendTips(userWorkflow);
             if (responseDTO.getErrors() == null || responseDTO.getErrors().isEmpty()) {
-                notificationService.sendMail(userWorkflow);
                 log.info("Request was successfully proceeded with responseDTO [{}]", responseDTO);
             } else {
+                log.warn("Request was proceeded with errors, responseDTO [{}]", responseDTO);
                 userWorkflow.setErrorMessage(responseDTO.getErrors().get(0).getMessage());
-                notificationService.sendMail(userWorkflow);
             }
+            notificationService.sendMail(userWorkflow);
 
         } catch (Exception exception) {
             log.error("We have exception in the process of sending tips -> ", exception);
             userWorkflow.setErrorMessage(exception.getMessage());
-            notificationService.sendMail(userWorkflow);
-            userWorkflow.setErrorMessage("Internal server error. Please contact admin person");
+            try {
+                notificationService.sendMail(userWorkflow);
+                fromCasinoService.sendTipsBack(userWorkflow);
+                userWorkflow.setErrorMessage("Internal server error. Your tips were successfully returned back to your account. Please contact admin person or try one more time later.");
+            } catch (Exception ex) {
+                log.error("We have a serious issue -> ", ex);
+                userWorkflow.setErrorMessage("Internal server error. Please contact admin person");
+            }
         }
     }
 
