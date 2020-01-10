@@ -7,8 +7,6 @@ import java.util.Map;
 
 public interface WorkFlowService {
 
-    Map<Step, Step> getWorkFlow();
     Step getNextStep(UserWorkflow userWorkflow);
-    String getErrorResponse(Step step, String errorCode);
 
 }

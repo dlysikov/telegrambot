@@ -9,11 +9,16 @@ import com.telegram.bot.model.enums.Symbols;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.math.BigDecimal;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -90,6 +95,39 @@ public final class CommonUtils {
             }
         }
         return result;
+    }
+
+    public static SendMessage addInlineButtons(String chatId, String text, List<InlineKeyboardButton> list) {
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> listOfInlineButtons = new ArrayList<>();
+        listOfInlineButtons.add(list);
+        inlineKeyboardMarkup.setKeyboard(listOfInlineButtons);
+        return new SendMessage().setChatId(chatId).setText(text).setReplyMarkup(inlineKeyboardMarkup);
+    }
+
+    public static String getMessage(Update update) {
+        return update.hasMessage() ? update.getMessage().getText() : update.getCallbackQuery().getData();
+    }
+
+    public static String getChatId(Update update) {
+        return update.getMessage() != null ? String.valueOf(update.getMessage().getChatId()) : String.valueOf(update.getCallbackQuery().getMessage().getChatId());
+    }
+
+    public static String getHelloMsg(Update update) {
+        return MessageFormat.format("Hello {0}! I'm Your CryptoExchangeBot. Press “Go to Exchange” to start", update.getMessage().getFrom().getFirstName());
+    }
+
+    public static SendMessage addReplyButtonsWithCurrency(Update update, String text, List<Actions> actionList) {
+        return addReplyButtons(update, text, actionList, true);
+    }
+
+    public static SendMessage addReplyButtons(Update update, String text, List<Actions> actionList) {
+        return addReplyButtons(update, text, actionList, false);
+    }
+
+    public static SendMessage addReplyButtons(Update update, String text, List<Actions> actionList, boolean isNeedCurrency) {
+        String chatId = update.getMessage() != null ? String.valueOf(update.getMessage().getChatId()) : String.valueOf(update.getCallbackQuery().getMessage().getChatId());
+        return new SendMessage().setChatId(chatId).setText("<em>" + text + "</em>").setReplyMarkup(getReplyKeyboard(actionList, isNeedCurrency)).setParseMode(ParseMode.HTML);
     }
 
 }
