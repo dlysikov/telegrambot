@@ -6,6 +6,7 @@ import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
 import com.telegram.bot.model.enums.Symbols;
+import com.telegram.bot.model.pojo.UserWorkflow;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static com.telegram.bot.utils.Constants.PD;
@@ -47,9 +49,9 @@ public final class CommonUtils {
     }
 
     public static List<InlineKeyboardButton> getDirectionButtons () {
-        InlineKeyboardButton buttonSnake = new InlineKeyboardButton("Stake -> PD");
+        InlineKeyboardButton buttonSnake = new InlineKeyboardButton("From Stake to Primedice");
         buttonSnake.setCallbackData(STAKE);
-        InlineKeyboardButton buttonPD = new InlineKeyboardButton("PD -> Stake");
+        InlineKeyboardButton buttonPD = new InlineKeyboardButton("From Primedice to Stake ");
         buttonPD.setCallbackData(PD);
         return Arrays.asList(buttonSnake, buttonPD);
     }
@@ -97,10 +99,13 @@ public final class CommonUtils {
         return result;
     }
 
-    public static SendMessage addInlineButtons(String chatId, String text, List<InlineKeyboardButton> list) {
+    public static SendMessage addButtons(String chatId, String text, List<InlineKeyboardButton> list) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> listOfInlineButtons = new ArrayList<>();
-        listOfInlineButtons.add(list);
+        for(InlineKeyboardButton button: list) {
+            listOfInlineButtons.add(Collections.singletonList(button));
+        }
+//        listOfInlineButtons.add(list);
         inlineKeyboardMarkup.setKeyboard(listOfInlineButtons);
         return new SendMessage().setChatId(chatId).setText(text).setReplyMarkup(inlineKeyboardMarkup);
     }
@@ -114,7 +119,11 @@ public final class CommonUtils {
     }
 
     public static String getHelloMsg(Update update) {
-        return MessageFormat.format("Hello {0}! I'm Your CryptoExchangeBot. Press “Go to Exchange” to start", update.getMessage().getFrom().getFirstName());
+        return MessageFormat.format("Hello {0}! I'm your Crypto Assistant.\nI can help you Exchange balance between Stake / Primedice and check your stats.\nPress “Go Exchange” to Exchange balance.\nPress “Check my stats” to view stats.\nPress “Exchange rates & FAQ” to view Exchange rates and how to use Assistant.\n\nEnjoy", update.getMessage().getFrom().getFirstName());
+    }
+
+    public static String getCheckResultMsg(UserWorkflow userWorkflow) {
+        return MessageFormat.format("Please check Your request. If it's correct tip user 'ShiftBot' {0} {1} and ONLY THAN CLICK CONFIRM.\n\n", userWorkflow.getAmount(), userWorkflow.getCurrency().getCode());
     }
 
     public static SendMessage addReplyButtonsWithCurrency(Update update, String text, List<Actions> actionList) {

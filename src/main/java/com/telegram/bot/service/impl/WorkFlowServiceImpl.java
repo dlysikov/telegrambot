@@ -28,11 +28,6 @@ public class WorkFlowServiceImpl implements WorkFlowService {
     }
 
     @Override
-    public Map<Step, Step> getWorkFlow() {
-        return workFlowMap;
-    }
-
-    @Override
     public Step getNextStep(UserWorkflow userWorkflow) {
         Step currentStep = userWorkflow.getStep();
         Step nextStep = workFlowMap.get(currentStep);
@@ -52,12 +47,4 @@ public class WorkFlowServiceImpl implements WorkFlowService {
         return nextStep;
     }
 
-    @Override
-    public String getErrorResponse(Step step, String errorCode) {
-        Map<String, String> errorsMap = workFlowErrorsMap.get(step);
-        if (errorsMap != null) {
-            return errorsMap.get(errorCode);
-        }
-        return null;
-    }
 }

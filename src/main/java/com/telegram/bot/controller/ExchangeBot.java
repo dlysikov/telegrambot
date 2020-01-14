@@ -125,7 +125,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
                 if (nextStep != null) {
                     switch (nextStep) {
                         case DIRECTION:
-                            execute(addInlineButtons(getChatId(update), "Make your choice:", getDirectionButtons()));
+                            execute(addButtons(getChatId(update), "Make your choice below:", getDirectionButtons()));
                             break;
                         case STAKE_USER:
                             execute(addReplyButtons(update, "Enter your stake username:", Collections.singletonList(Cancel)));
@@ -140,7 +140,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
                             execute(addReplyButtons(update, "Enter amount:", Collections.singletonList(Cancel)));
                             break;
                         case CHECK_RESULT:
-                            execute(addReplyButtons(update, "Check your result and Confirm or Cancel it:\n\n" + getResult(update), Arrays.asList(Confirm, Cancel)));
+                            execute(addReplyButtons(update, getCheckResultMsg(userWorkflow) + getResult(update), Arrays.asList(Confirm, Cancel)));
                             break;
                         case CONFIRM_RESULT:
                             execute(addReplyButtons(update, "Thank you! Your request will be proceeded in the nearest time. \nHave a good day :)", Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
@@ -152,7 +152,7 @@ public class ExchangeBot extends TelegramLongPollingBot {
             } else {
                 switch (userWorkflow.getStep()) {
                     case DIRECTION:
-                        execute(addInlineButtons(getChatId(update), userWorkflow.getErrorMessage(), getDirectionButtons()));
+                        execute(addButtons(getChatId(update), userWorkflow.getErrorMessage(), getDirectionButtons()));
                         break;
                     case CURRENCY:
                         execute(addReplyButtonsWithCurrency(update, userWorkflow.getErrorMessage(), Collections.singletonList(Cancel)));
