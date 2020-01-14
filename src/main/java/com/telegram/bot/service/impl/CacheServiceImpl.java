@@ -1,5 +1,6 @@
 package com.telegram.bot.service.impl;
 
+import com.telegram.bot.exception.NoAddingIsAllowedException;
 import com.telegram.bot.factory.TelegramCacheFactory;
 import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
@@ -8,6 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 @Service
@@ -18,6 +25,7 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private TelegramCacheFactory telegramCacheFactory;
 
+    private volatile Boolean isAllowedToAdd = true;
 
     @Override
     public UserWorkflow getUserWorkflow(String chatId) {
@@ -30,8 +38,13 @@ public class CacheServiceImpl implements CacheService {
     }
 
     @Override
-    public void add(String chatId, UserWorkflow userWorkflow) {
-        telegramCacheFactory.getWorkflowCache().put(chatId, userWorkflow);
+    public void add(String chatId, UserWorkflow userWorkflow) throws NoAddingIsAllowedException{
+        if (isAllowedToAdd) {
+            telegramCacheFactory.getWorkflowCache().put(chatId, userWorkflow);
+        } else {
+            log.warn("No Adding is Allowed");
+            throw new NoAddingIsAllowedException();
+        }
     }
 
     @Override
@@ -53,5 +66,20 @@ public class CacheServiceImpl implements CacheService {
         userWorkflow.setStakeUserName(null);
         userWorkflow.setAmount(null);
         userWorkflow.setCurrency(null);
+    }
+
+    @Override
+    public void lockToAdd() {
+        this.isAllowedToAdd = false;
+    }
+
+    @Override
+    public void unlockToAdd() {
+        this.isAllowedToAdd = true;
+    }
+
+    @Override
+    public Map<String, UserWorkflow> getCache() {
+        return this.telegramCacheFactory.getWorkflowCache();
     }
 }

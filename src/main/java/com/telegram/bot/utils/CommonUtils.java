@@ -5,7 +5,6 @@ import com.telegram.bot.model.casino.Balance;
 import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.enums.Actions;
 import com.telegram.bot.model.enums.Currency;
-import com.telegram.bot.model.enums.Symbols;
 import com.telegram.bot.model.pojo.UserWorkflow;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,7 +36,7 @@ public final class CommonUtils {
         List<KeyboardRow> keyboardRows = new ArrayList<>();
         if (isNeedCurrency) {
             KeyboardRow keyboardButtonsCurrency = new KeyboardRow();
-            Currency.getCurrencyList().forEach(currency -> keyboardButtonsCurrency.add(Symbols.MONEY + currency));
+            Currency.getCurrencyList().forEach(keyboardButtonsCurrency::add);
             keyboardRows.add(keyboardButtonsCurrency);
         }
         keyboardRows.add(keyboardButtons);

@@ -1,5 +1,6 @@
 package com.telegram.bot.controller;
 
+import com.telegram.bot.exception.NoAddingIsAllowedException;
 import com.telegram.bot.handler.ExchangeHandler;
 import com.telegram.bot.model.enums.Step;
 import com.telegram.bot.model.pojo.UserWorkflow;
@@ -112,7 +113,11 @@ public class ExchangeBot extends TelegramLongPollingBot {
             }
 
         } else {
-            handler.addNewUserWorkflow(update);
+            try{
+                handler.addNewUserWorkflow(update);
+            } catch (NoAddingIsAllowedException exception) {
+                execute(addReplyButtons(update, "Sorry. The service is temporary unavailable. Please try later.", Arrays.asList(GoExchange, ChangeLanguage, HowToUse)));
+            }
         }
         responseGenerator(update);
     }

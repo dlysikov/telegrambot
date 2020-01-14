@@ -1,5 +1,6 @@
 package com.telegram.bot.handler;
 
+import com.telegram.bot.exception.NoAddingIsAllowedException;
 import com.telegram.bot.model.casino.ResponseDTO;
 import com.telegram.bot.model.casino.User;
 import com.telegram.bot.model.enums.Currency;
@@ -48,7 +49,7 @@ public class ExchangeHandler {
         return cacheService.getUserWorkflow(getChatId(update));
     }
 
-    public void addNewUserWorkflow(Update update){
+    public void addNewUserWorkflow(Update update) throws NoAddingIsAllowedException {
         UserWorkflow newUserWorkflow = new UserWorkflow();
         newUserWorkflow.setChatId(getChatId(update));
         newUserWorkflow.setTelegramUserFirstName(update.getMessage().getFrom().getFirstName());
